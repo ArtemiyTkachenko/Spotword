@@ -50,7 +50,7 @@ internal expect class SearchListTransferOwner() {
 
     internal fun importList()
 
-    internal fun exportSelectedList()
+    internal fun exportList(list: SavedSearchList)
 
     internal fun cancel()
 

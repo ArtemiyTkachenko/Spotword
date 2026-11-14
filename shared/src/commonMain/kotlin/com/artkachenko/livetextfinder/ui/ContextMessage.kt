@@ -1,5 +1,6 @@
 package com.artkachenko.livetextfinder.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +38,14 @@ internal fun ContextMessage(
             MaterialTheme.colorScheme.surfaceContainer
         },
         shape = MaterialTheme.shapes.medium,
+        border = if (floating) {
+            BorderStroke(
+                FinderCameraOverlay.controlOutlineWidth,
+                FinderCameraOverlay.controlOutline,
+            )
+        } else {
+            null
+        },
     ) {
         Column(
             modifier = Modifier.padding(

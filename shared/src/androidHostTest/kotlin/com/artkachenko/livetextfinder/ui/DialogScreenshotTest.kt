@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import com.artkachenko.livetextfinder.AppAppearance
 import com.artkachenko.livetextfinder.ScreenshotVariant
 import com.artkachenko.livetextfinder.assertDialogScreenshot
 import com.artkachenko.livetextfinder.drainMainLooper
@@ -184,37 +185,16 @@ class DialogScreenshotTest {
 
     @Test
     fun finderOptions() {
-        assertDialogScreenshot(
-            subject = "finder-options-sheet",
-            state = "live-expanded",
-            variant = ScreenshotVariant.LIGHT,
-            onDialogReady = { root ->
-                val expand = dialogNodes(root).firstNotNullOf { node ->
-                    node.config.getOrNull(SemanticsActions.Expand)?.action
-                }
-                check(expand())
-            },
-        ) {
+        assertDialogScreenshot("finder-options-sheet", "live-expanded", ScreenshotVariant.LIGHT) {
             FinderOptionsSheet(
                 highlightLabel = stringResource(
                     Res.string.finder_options_highlight,
                     stringResource(Res.string.highlight_color_yellow),
                 ),
                 highlightEnabled = true,
-                matchMode = SearchMatchMode.Substring,
-                matchModeEnabled = true,
-                onMatchMode = {},
-                liveAreaLabel = stringResource(Res.string.scan_area_option_full_frame),
-                showImport = true,
-                showListTransfer = true,
-                listTransferHelp = stringResource(Res.string.search_list_transfer_help),
-                importListEnabled = true,
-                exportListEnabled = false,
-                onImportList = ::ignore,
-                onExportList = ::ignore,
+                appearanceLabel = appearanceLabel(AppAppearance.System),
+                onAppearance = ::ignore,
                 onHighlight = ::ignore,
-                onLiveArea = ::ignore,
-                onImport = ::ignore,
                 onHelp = ::ignore,
                 onDismissRequest = ::ignore,
             )

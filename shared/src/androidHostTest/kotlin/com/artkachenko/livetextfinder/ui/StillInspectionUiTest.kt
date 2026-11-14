@@ -18,7 +18,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.BroadcastFrameClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -102,7 +101,7 @@ import com.artkachenko.livetextfinder.search.inMemorySearchSessionController
 import com.artkachenko.livetextfinder.search.searchRecognizedContent
 import com.artkachenko.livetextfinder.search.searchRecognizedText
 import com.artkachenko.livetextfinder.search.stillMatchRows
-import com.artkachenko.livetextfinder.status.FinderStatusRegion
+import com.artkachenko.livetextfinder.status.LegacyFinderStatusRegion
 import com.artkachenko.livetextfinder.visualOutputDirectory
 import com.artkachenko.livetextfinder.writeVisualScreenshot
 import kotlin.math.roundToInt
@@ -209,7 +208,7 @@ class StillInspectionUiTest {
                     )
 
                     val renderStatus: @Composable () -> Unit = {
-                        FinderStatusRegion(
+                        LegacyFinderStatusRegion(
                             state = cameraState,
                             importedState = importedState,
                             freezeState = freezeState,
@@ -426,72 +425,6 @@ class StillInspectionUiTest {
     }
 
     @Test
-    fun retainedDockKeepsSecondaryActionsReachableDuringShare() {
-        val actions = mutableListOf<String>()
-        val preparing = mutableStateOf(false)
-        mount(360, 260) {
-            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                Surface(Modifier.fillMaxSize()) {
-                    FinderLiveDock(
-                        search = FinderSearchBar(
-                            query = "invoice",
-                            onQueryChange = {},
-                            activeListName = null,
-                            activeListTermCount = 0,
-                            matchMode = SearchMatchMode.Substring,
-                            saving = false,
-                            searchListsLabel = "Lists",
-                            onSearchLists = { actions += "lists" },
-                            onTerms = { actions += "terms" },
-                            onUseManual = {},
-                            onResults = { actions += "results" },
-                        ),
-                        capture = FinderCaptureActions(
-                            captureLabel = null,
-                            captureEnabled = false,
-                            onCapture = {},
-                            pendingCaptureLabel = null,
-                            onCancelCapture = {},
-                            secondaryActionLabel = null,
-                            onSecondaryAction = {},
-                        ),
-                        resultsLabel = "Results (0)",
-                        onOccurrences = { actions += "occurrences" },
-                        returnLabel = "Resume scanning",
-                        onReturn = { actions += "return" },
-                        onShare = { actions += "share" },
-                        onCancelShare = { actions += "cancel" },
-                        sharePreparing = preparing.value,
-                    )
-                }
-            }
-        }
-
-        fun assertActionHasTouchSize(label: String) {
-            val node = nodes(composeRoot()).first { node ->
-                nodeText(node) == label &&
-                    node.config.getOrNull(SemanticsActions.OnClick) != null
-            }
-            assertTrue(node.boundsInRoot.width >= 48f, "$label width")
-            assertTrue(node.boundsInRoot.height >= 48f, "$label height")
-        }
-
-        assertActionHasTouchSize("Results (0)")
-        assertActionHasTouchSize("More")
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Resume scanning" })
-
-        preparing.value = true
-        measureCurrentComposition()
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Preparing image…" })
-        assertActionHasTouchSize("Cancel")
-        clickText("Cancel")
-        assertEquals("cancel", actions.last())
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Results (0)" })
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "More" })
-        saveRenderedFixture("retained-actions-manager-preparing-light.png")
-    }
-
-    @Test
     fun retainedDockRoutesCompactActionsThroughProductionDispatcher() {
         val actions = mutableListOf<String>()
         val managerOpen = mutableStateOf(false)
@@ -657,97 +590,6 @@ class StillInspectionUiTest {
     }
 
     @Test
-    fun retainedControlsRenderInNarrowLargeTextAndLandscapeHiddenViewportFixtures() {
-        val fixtures = listOf(
-            Triple(320, 720, 1.4f) to false,
-            Triple(360, 640, 1.25f) to true,
-            Triple(800, 360, 1.25f) to false,
-        )
-        fixtures.forEachIndexed { index, (size, dark) ->
-            disposeComposition()
-            mount(size.first, size.second, fontScale = size.third) {
-                LiveTextFinderTheme(darkThemeOverride = dark, dynamicColor = false) {
-                    Surface(Modifier.fillMaxSize()) {
-                        FinderContentAssembly(
-                            scrollState = androidx.compose.foundation.ScrollState(0),
-                            scrollable = true,
-                            modifier = Modifier.fillMaxSize()
-                                .safeDrawingPadding()
-                                .imePadding(),
-                            topContent = {
-                                FinderLiveAppBar(onOptions = {})
-                                Column(Modifier.fillMaxWidth()) {}
-                            },
-                            managerContent = {},
-                            viewportContent = {},
-                            footerContent = {
-                                Column(
-                                    Modifier.fillMaxWidth().padding(
-                                        horizontal = FinderSpacing.large,
-                                        vertical = FinderSpacing.extraSmall,
-                                    ),
-                                    verticalArrangement = Arrangement
-                                        .spacedBy(FinderSpacing.extraSmall),
-                                ) {
-                                    StillInspectionControls(
-                                        matchCount = 0,
-                                        showMatchesAction = false,
-                                        zoom = 1f,
-                                        canZoom = false,
-                                        onZoomIn = {},
-                                        onZoomOut = {},
-                                        onReset = {},
-                                        onMatches = {},
-                                    )
-                                }
-                                FinderLiveDock(
-                                    search = FinderSearchBar(
-                                        query = "invoice",
-                                        onQueryChange = {},
-                                        activeListName = "Monthly invoice archive",
-                                        activeListTermCount = 12,
-                                        matchMode = SearchMatchMode.Substring,
-                                        saving = false,
-                                        searchListsLabel = "Lists",
-                                        onSearchLists = {},
-                                        onTerms = {},
-                                        onUseManual = {},
-                                        onResults = {},
-                                    ),
-                                    capture = FinderCaptureActions(
-                                        captureLabel = null,
-                                        captureEnabled = false,
-                                        onCapture = {},
-                                        pendingCaptureLabel = null,
-                                        onCancelCapture = {},
-                                        secondaryActionLabel = null,
-                                        onSecondaryAction = {},
-                                    ),
-                                    resultsLabel = "Results (0)",
-                                    returnLabel = "Resume scanning",
-                                    onCancelShare = {},
-                                )
-                            },
-                        )
-                    }
-                }
-            }
-            val labels = nodes(composeRoot()).map(::nodeText)
-            listOf(
-                "Find text",
-                "Terms",
-                "Resume scanning",
-                "Results (0)",
-                "More",
-                "Zoom in",
-                "Zoom out",
-                "Reset view",
-            ).forEach { label -> assertTrue(labels.any { it == label }, "fixture $index: $label") }
-            saveRenderedFixture("retained-hidden-$index-${size.first}x${size.second}.png")
-        }
-    }
-
-    @Test
     fun sharedViewportTransformsImageAndOverlayTogetherAndClipsTheSubtree() {
         mount(100, 100) {
             LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
@@ -847,58 +689,6 @@ class StillInspectionUiTest {
         } finally {
             rendered.recycle()
         }
-    }
-
-    @Test
-    fun compactLargeTextNavigationControlsRenderInLightAndDarkThemes() {
-        var nextClicks = 0
-        mount(240, 360, fontScale = 1.5f) {
-            Column(Modifier.fillMaxSize()) {
-                LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                    Surface(Modifier.weight(1f)) {
-                        StillMatchNavigationControls(
-                            position = 1,
-                            count = 4,
-                            matchedTerm = "invoice",
-                            matchedText = "Invoice 802",
-                            canLocate = true,
-                            onPrevious = {},
-                            onNext = { nextClicks++ },
-                            onCopy = {},
-                        )
-                    }
-                }
-                LiveTextFinderTheme(darkThemeOverride = true, dynamicColor = false) {
-                    Surface(Modifier.weight(1f)) {
-                        StillMatchNavigationControls(
-                            position = 4,
-                            count = 4,
-                            matchedTerm = "invoice",
-                            matchedText = "invoice 910",
-                            canLocate = true,
-                            onPrevious = {},
-                            onNext = {},
-                            onCopy = {},
-                        )
-                    }
-                }
-            }
-        }
-
-        val nodes = nodes(composeRoot())
-        val previous = nodes.first { nodeText(it) == "Previous" }
-        assertNotNull(previous.config.getOrNull(SemanticsProperties.Disabled))
-        val next = nodes.first { nodeText(it) == "Next" }
-        assertTrue(checkNotNull(next.config.getOrNull(SemanticsActions.OnClick)?.action)())
-        assertEquals(1, nextClicks)
-        assertTrue(nodes.any { nodeText(it).contains("invoice: Invoice 802") })
-        assertTrue(
-            nodes.any {
-                it.config.getOrNull(SemanticsProperties.ContentDescription)
-                    ?.any { description -> description.contains("Invoice 802") } == true
-            },
-        )
-        saveRenderedFixture("still-navigation-light-dark-compact-large-text.png")
     }
 
     @Test
@@ -1306,73 +1096,6 @@ class StillInspectionUiTest {
         assertTrue(dialogOpen)
         importedOwner.dispose()
         frozenOwner.stop()
-    }
-
-    @Test
-    fun zoomResetAndMatchControlsRemainAccessibleAtLargeFontAndCompactWidth() {
-        val transform = mutableStateOf(StillViewTransform())
-        val viewportWidth = 220f
-        val viewportHeight = 180f
-        val fit = FrozenFrameFit(100, 100, 0, viewportWidth, viewportHeight)
-        val center = PreviewPoint(viewportWidth / 2f, viewportHeight / 2f)
-        mount(220, 180, fontScale = 1.5f) {
-            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                StillInspectionControls(
-                    matchCount = 2,
-                    zoom = transform.value.zoom,
-                    canZoom = true,
-                    onZoomIn = {
-                        transform.value = transform.value.zoomBy(
-                            1.25f,
-                            center,
-                            viewportWidth,
-                            viewportHeight,
-                            fit,
-                        )
-                    },
-                    onZoomOut = {
-                        transform.value = transform.value.zoomBy(
-                            0.8f,
-                            center,
-                            viewportWidth,
-                            viewportHeight,
-                            fit,
-                        )
-                    },
-                    onReset = { transform.value = transform.value.reset() },
-                    onMatches = {
-                    },
-                )
-            }
-        }
-
-        fun action(text: String): SemanticsNode = nodes(composeRoot()).first { node ->
-            nodeText(node) == text && node.config.getOrNull(SemanticsActions.OnClick) != null
-        }
-
-        assertTrue(action("Zoom in").config.getOrNull(SemanticsProperties.Disabled) == null)
-        assertNotNull(action("Zoom out").config.getOrNull(SemanticsProperties.Disabled))
-        assertNotNull(action("Reset view").config.getOrNull(SemanticsProperties.Disabled))
-        assertTrue(action("Matches (2)").config.getOrNull(SemanticsProperties.Disabled) == null)
-        listOf("Zoom in", "Zoom out", "Reset view", "Matches (2)").forEach { label ->
-            val bounds = action(label).boundsInRoot
-            assertTrue(bounds.width >= 48f && bounds.height >= 48f)
-            assertTrue(bounds.right <= viewportWidth && bounds.bottom <= viewportHeight)
-        }
-
-        val zoomIn = checkNotNull(
-            action("Zoom in").config.getOrNull(SemanticsActions.OnClick)?.action,
-        )
-        assertTrue(zoomIn())
-        measureCurrentComposition()
-        assertTrue(action("Zoom out").config.getOrNull(SemanticsProperties.Disabled) == null)
-        assertTrue(action("Reset view").config.getOrNull(SemanticsProperties.Disabled) == null)
-        val reset = checkNotNull(
-            action("Reset view").config.getOrNull(SemanticsActions.OnClick)?.action,
-        )
-        assertTrue(reset())
-        measureCurrentComposition()
-        assertNotNull(action("Zoom out").config.getOrNull(SemanticsProperties.Disabled))
     }
 
     @Test

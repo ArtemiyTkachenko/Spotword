@@ -42,6 +42,7 @@ import livetextfinder.shared.generated.resources.capture_cancel_import
 import livetextfinder.shared.generated.resources.capture_light
 import livetextfinder.shared.generated.resources.finder_options
 import livetextfinder.shared.generated.resources.scan_area_badge
+import livetextfinder.shared.generated.resources.scan_area_option_custom
 import livetextfinder.shared.generated.resources.scanner_crop_free
 import livetextfinder.shared.generated.resources.scanner_flash_off
 import livetextfinder.shared.generated.resources.scanner_flash_on
@@ -67,6 +68,7 @@ internal fun FloatingLiveScanner(
     onFreeze: () -> Unit,
     onCancelFreeze: () -> Unit,
     areaEnabled: Boolean,
+    areaSelected: Boolean = false,
     onArea: () -> Unit,
     importEnabled: Boolean,
     importPending: Boolean,
@@ -185,6 +187,12 @@ internal fun FloatingLiveScanner(
                                 label = stringResource(Res.string.scan_area_badge),
                                 onClick = onArea,
                                 enabled = areaEnabled,
+                                selected = areaSelected,
+                                accessibilityLabel = if (areaSelected) {
+                                    stringResource(Res.string.scan_area_option_custom)
+                                } else {
+                                    null
+                                },
                             ),
                             FloatingScannerAction(
                                 icon = Res.drawable.scanner_pause,

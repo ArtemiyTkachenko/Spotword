@@ -226,7 +226,7 @@ internal actual class SearchListTransferOwner actual constructor() {
         }
     }
 
-    internal actual fun exportSelectedList() {
+    internal actual fun exportList(list: SavedSearchList) {
         checkMainThread()
         val context = currentContext ?: return
         if (!liveContextIsCurrent()) {
@@ -237,9 +237,13 @@ internal actual class SearchListTransferOwner actual constructor() {
             showMessage(checkNotNull(currentCopy).exportUnavailable, true)
             return
         }
-        val selected = context.sessionState.activeList ?: return
+        val saved = context.sessionState.persisted.lists.firstOrNull { it.id == list.id }
+        if (saved == null || saved != list) {
+            showMessage(checkNotNull(currentCopy).exportUnavailable, true)
+            return
+        }
         val bytes = try {
-            serializeSearchListText(selected.terms)
+            serializeSearchListText(saved.terms)
         } catch (error: IllegalArgumentException) {
             showMessage(checkNotNull(currentCopy).listCannotExport, true)
             return
@@ -254,7 +258,7 @@ internal actual class SearchListTransferOwner actual constructor() {
         )
         expectedPickerStop = true
         try {
-            launchExport?.invoke(searchListExportFileName(selected.name))
+            launchExport?.invoke(searchListExportFileName(saved.name))
             current.pickerLaunched = true
         } catch (_: RuntimeException) {
             failTicket(current, checkNotNull(currentCopy).exportFailed)
@@ -549,7 +553,7 @@ internal actual class SearchListTransferOwner actual constructor() {
     private fun canExport(context: TransferContext): Boolean =
         context.sessionState.loaded && !context.sessionState.saving &&
             !context.sessionState.recoveryRequired && context.sessionState.error == null &&
-            context.sessionState.activeList != null
+            context.sessionState.persisted.lists.isNotEmpty()
 
     private fun canImportNow(): Boolean = currentContext?.let(::canImport) == true && !isBusy
 

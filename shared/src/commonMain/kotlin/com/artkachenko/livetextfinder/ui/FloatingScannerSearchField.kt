@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.finder_find_text
 import livetextfinder.shared.generated.resources.finder_match_whole_words
+import livetextfinder.shared.generated.resources.scanner_clear_query
 import livetextfinder.shared.generated.resources.scanner_close
 import livetextfinder.shared.generated.resources.scanner_match_word
 import livetextfinder.shared.generated.resources.scanner_search
@@ -56,8 +57,7 @@ internal fun FloatingScannerSearchField(
     Row(
         modifier = modifier.fillMaxWidth()
             .heightIn(min = 52.dp)
-            .clip(CircleShape)
-            .background(FinderCameraOverlay.controlScrim)
+            .floatingControlSurface(CircleShape)
             .padding(start = 16.dp, end = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -94,6 +94,22 @@ internal fun FloatingScannerSearchField(
                 }
             },
         )
+        if (activeListName == null && query.isNotEmpty()) {
+            val clearLabel = stringResource(Res.string.scanner_clear_query)
+            ScannerControlTooltip(clearLabel) {
+                IconButton(
+                    onClick = { onQueryChange("") },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.scanner_close),
+                        contentDescription = clearLabel,
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
+        }
         WholeWordsToggle(wholeWords, matchModeEnabled, onWholeWordsChange)
     }
 }

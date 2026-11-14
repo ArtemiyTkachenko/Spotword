@@ -84,7 +84,7 @@ import com.artkachenko.livetextfinder.search.SearchTermSummary
 import com.artkachenko.livetextfinder.search.dispatchSearchListSelection
 import com.artkachenko.livetextfinder.search.searchRecognizedContent
 import com.artkachenko.livetextfinder.search.searchRecognizedText
-import com.artkachenko.livetextfinder.status.FinderStatusRegion
+import com.artkachenko.livetextfinder.status.LegacyFinderStatusRegion
 import com.artkachenko.livetextfinder.status.SearchFeedback
 import com.artkachenko.livetextfinder.status.SearchFeedbackKind
 import com.artkachenko.livetextfinder.status.StatusSource
@@ -463,7 +463,7 @@ class StatusFeedbackTest {
                     }
                 }
                 if (optionsOpen.value) {
-                    FinderOptionsSheet(
+                    LegacyFinderOptionsSheet(
                         highlightLabel = "Highlight color: Yellow",
                         highlightEnabled = highlightEnabled.value,
                         matchMode = matchMode.value,
@@ -691,7 +691,7 @@ class StatusFeedbackTest {
                     }
                 }
                 if (optionsOpen.value) {
-                    FinderOptionsSheet(
+                    LegacyFinderOptionsSheet(
                         highlightLabel = "Highlight color: Yellow",
                         highlightEnabled = true,
                         matchMode = SearchMatchMode.Substring,
@@ -730,7 +730,7 @@ class StatusFeedbackTest {
         val scrollViewport = checkNotNull(nodes.firstOrNull {
             it.config.getOrNull(SemanticsActions.ScrollBy) != null
         })
-        listOf("Import search list", "Export selected list").forEach { label ->
+        listOf("Import search list", "Export").forEach { label ->
             val action = nodeWithText(nodes, label, clickable = true)
             assertTrue(action.size.width / density >= 48f)
             assertTrue(action.size.height / density >= 48f)
@@ -763,7 +763,7 @@ class StatusFeedbackTest {
                     )
                 }
                 if (optionsOpen.value) {
-                    FinderOptionsSheet(
+                    LegacyFinderOptionsSheet(
                         highlightLabel = "Highlight color: Yellow",
                         highlightEnabled = true,
                         matchMode = SearchMatchMode.Substring,
@@ -2992,7 +2992,7 @@ class StatusFeedbackTest {
             else -> liveSearch
         }
         val presentation = SearchPresentationOwner().present(search.spec, state, 0L)
-        FinderStatusRegion(
+        LegacyFinderStatusRegion(
             state = state,
             importedState = importedState,
             freezeState = freezeState,

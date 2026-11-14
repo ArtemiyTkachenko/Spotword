@@ -95,7 +95,8 @@
     <string name="search_context_count_unavailable">—</string>
     <string name="finder_options_import">Import image</string>
     <string name="search_list_import">Import search list</string>
-    <string name="search_list_export">Export selected list</string>
+    <string name="search_list_export">Export</string>
+    <string name="search_list_export_accessibility">Export %1$s</string>
     <string name="search_list_import_fallback_name">Imported list</string>
     <string name="search_list_transfer_cancel">Cancel transfer</string>
     <string name="search_list_transfer_help">Search list text files contain one term or phrase per line. Export includes the selected list terms only; colours and search settings are not included.</string>
@@ -109,7 +110,7 @@
     <string name="search_list_transfer_export_complete">Search list exported.</string>
     <string name="search_list_transfer_another_busy">Another text transfer is still finishing.</string>
     <string name="search_list_transfer_import_unavailable">Import is unavailable while editing or while saved data is busy.</string>
-    <string name="search_list_transfer_export_unavailable">Select a saved list after storage finishes saving.</string>
+    <string name="search_list_transfer_export_unavailable">Wait for storage to finish saving, then export a saved list.</string>
     <string name="search_list_transfer_list_invalid">This list cannot be exported as text.</string>
     <string name="search_list_transfer_import_failed">The file could not be imported. Choose a UTF-8 text list with one nonblank term per line.</string>
     <string name="search_list_transfer_export_failed">The destination could not be written. Choose another location and try again.</string>
@@ -171,7 +172,7 @@
     <string name="status_share_image">Share image</string>
     <string name="status_cancel">Cancel</string>
     <string name="help_still_title">Inspect an image</string>
-    <string name="help_still_body">On a frozen or imported image, pinch to zoom and drag to pan, or use the zoom buttons. For Reset view and Occurrences, open Options. Select an occurrence to show it on the image, copy the match, or copy its full line. Sharing still uses the whole image.</string>
+    <string name="help_still_body">On a frozen or imported image, pinch to zoom and drag to pan, or use the zoom buttons. Reset view is in Options. Tap the status pill, then choose Occurrences. Select an occurrence to show it on the image, copy the match, or copy its full line. Sharing still uses the whole image.</string>
     <string name="still_zoom_in">Zoom in</string>
     <string name="still_zoom_out">Zoom out</string>
     <string name="still_reset_view">Reset view</string>
@@ -290,4 +291,11 @@
     <string name="scanner_zoom_value">%1$d.%2$d×</string>
     <string name="scanner_cancel_share">Cancel share</string>
     <string name="scanner_no_match_selected">– of %1$d</string>
+    <string name="scanner_clear_query">Clear search</string>
+    <string name="scanner_camera_access_needed">Camera access needed</string>
+    <string name="finder_options_appearance">Appearance: %1$s</string>
+    <string name="appearance_title">Appearance</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
 </resources>

@@ -1,7 +1,12 @@
 package com.artkachenko.livetextfinder.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -33,6 +38,13 @@ internal object FinderCameraOverlay {
     val controlScrim: Color = Color.Black.copy(alpha = 0.6f)
     val onControlScrim: Color = Color.White
 
+    /**
+     * Hairline edge around every floating control. The scrim alone vanishes on a black
+     * backdrop, such as the letterbox around a retained image or a camera without permission.
+     */
+    val controlOutline: Color = Color.White.copy(alpha = 0.28f)
+    val controlOutlineWidth: Dp = 1.dp
+
     /** Inverted surface for the selected Whole words toggle. */
     val selectedControlContainer: Color = Color.White
     val onSelectedControl: Color = Color.Black
@@ -46,6 +58,12 @@ internal object FinderCameraOverlay {
     val labelPaddingHorizontal: Dp = 6.dp
     val labelPaddingVertical: Dp = 3.dp
 }
+
+/** Paints a floating control: the scrim, clipped to [shape], with its hairline edge. */
+internal fun Modifier.floatingControlSurface(shape: Shape): Modifier =
+    clip(shape)
+        .background(FinderCameraOverlay.controlScrim)
+        .border(FinderCameraOverlay.controlOutlineWidth, FinderCameraOverlay.controlOutline, shape)
 
 /** Returns the dashed stroke used for the scan-area border. */
 internal fun Density.scanAreaGuideStroke(

@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.artkachenko.livetextfinder.search.SearchTermSummary
 import livetextfinder.shared.generated.resources.Res
+import livetextfinder.shared.generated.resources.inspection_results_occurrences
 import livetextfinder.shared.generated.resources.search_context_count_unavailable
 import livetextfinder.shared.generated.resources.search_result_count_description
 import livetextfinder.shared.generated.resources.search_results_done
@@ -47,6 +48,7 @@ internal fun SearchTermResultsDialog(
     canLocate: Boolean = true,
     onSelect: (String) -> Unit = {},
     onDismiss: () -> Unit,
+    onOccurrences: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -184,6 +186,16 @@ internal fun SearchTermResultsDialog(
                     }
                 }
             }
+        },
+        dismissButton = if (onOccurrences != null) {
+            {
+                FinderSecondaryAction(
+                    label = stringResource(Res.string.inspection_results_occurrences),
+                    onClick = onOccurrences,
+                )
+            }
+        } else {
+            null
         },
         confirmButton = {
             FinderSecondaryAction(

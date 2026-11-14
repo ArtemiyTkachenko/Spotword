@@ -32,6 +32,7 @@ import com.artkachenko.livetextfinder.captureScreenshotBitmap
 import com.artkachenko.livetextfinder.search.PersistedSearchState
 import com.artkachenko.livetextfinder.search.SavedSearchList
 import com.artkachenko.livetextfinder.search.SearchListEditorState
+import com.artkachenko.livetextfinder.search.SearchListTransferState
 import com.artkachenko.livetextfinder.search.SearchSessionController
 import com.artkachenko.livetextfinder.search.SearchSessionError
 import com.artkachenko.livetextfinder.search.SearchSessionStore
@@ -144,6 +145,62 @@ class FinderSearchListsTest {
         assertEquals(listOf(second), deleteCalls)
         assertEquals(listOf("two"), selectCalls)
         assertEquals("two", selected.value)
+    }
+
+    @Test
+    fun listManagerExportsInactiveRowWithoutSelectingItAndKeepsImportIndependent() {
+        val active = SavedSearchList("active", "Parts", listOf("bolt"))
+        val inactive = SavedSearchList("inactive", "Invoices", listOf("invoice"))
+        val transfers = mutableStateOf(
+            SearchListTransferState(supported = true, importEnabled = true, exportEnabled = true),
+        )
+        val exported = mutableListOf<SavedSearchList>()
+        var imports = 0
+        mount(widthDp = 360, heightDp = 800) {
+            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
+                Surface(Modifier.fillMaxSize()) {
+                    FinderSearchLists(
+                        lists = listOf(active, inactive),
+                        activeListId = active.id,
+                        editor = SearchListEditorState(),
+                        canSave = true,
+                        onNew = ::ignoreAction,
+                        onSelect = { id -> error("Unexpected selection of $id") },
+                        onEdit = ::ignoreList,
+                        onDelete = ::ignoreList,
+                        onNameChange = ::ignoreText,
+                        onTermsChange = ::ignoreText,
+                        onSave = ::ignoreAction,
+                        onCancel = ::ignoreAction,
+                        transferState = transfers.value,
+                        onImportList = { imports++ },
+                        onExportList = { exported += it },
+                    )
+                }
+            }
+        }
+
+        val nodes = semanticsNodes()
+        val export = nodeWithDescription(nodes, "Export Invoices")
+        val importAction = nodeWithText(nodes, "Import search list")
+        assertTouchBounds(export)
+        assertTouchBounds(importAction)
+        click(export)
+        click(importAction)
+        assertEquals(listOf(inactive), exported)
+        assertEquals(1, imports)
+        val activeRow = nodeWithDescription(semanticsNodes(), "Select Parts")
+        assertTrue(activeRow.config[SemanticsProperties.Selected])
+
+        transfers.value = transfers.value.copy(importEnabled = false, exportEnabled = false)
+        measureCurrentComposition()
+        val disabled = semanticsNodes()
+        assertTrue(nodeWithDescription(disabled, "Export Invoices").config.contains(
+            SemanticsProperties.Disabled,
+        ))
+        assertTrue(nodeWithText(disabled, "Import search list").config.contains(
+            SemanticsProperties.Disabled,
+        ))
     }
 
     @Test

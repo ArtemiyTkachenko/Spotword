@@ -1,11 +1,6 @@
 package com.artkachenko.livetextfinder.status
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.artkachenko.livetextfinder.camera.FreezePresentationState
 import com.artkachenko.livetextfinder.camera.ImportedImagePhase
 import com.artkachenko.livetextfinder.camera.ImportedImageState
@@ -17,13 +12,12 @@ import com.artkachenko.livetextfinder.search.SearchPresentation
 import com.artkachenko.livetextfinder.search.SearchSessionState
 import com.artkachenko.livetextfinder.search.TextSearchResult
 import com.artkachenko.livetextfinder.ui.ContextMessage
-import com.artkachenko.livetextfinder.ui.StatusDetailsDialog
 import com.artkachenko.livetextfinder.ui.StatusSummary
 import com.artkachenko.livetextfinder.ui.searchSessionErrorMessage
 import com.artkachenko.livetextfinder.ui.sourceStatusMessage
 import livetextfinder.shared.generated.resources.Res
+import livetextfinder.shared.generated.resources.scanner_camera_access_needed
 import livetextfinder.shared.generated.resources.status_camera_error_recovery
-import livetextfinder.shared.generated.resources.status_details_title
 import livetextfinder.shared.generated.resources.status_freezing
 import livetextfinder.shared.generated.resources.status_import_choosing
 import livetextfinder.shared.generated.resources.status_import_error
@@ -57,16 +51,7 @@ internal fun FinderStatusRegion(
     onRetrySavedData: () -> Unit,
     onRequestReset: () -> Unit,
     floatingContent: (@Composable (String, @Composable () -> Unit) -> Unit)? = null,
-    floatingDetailsOpen: Boolean = false,
-    onDismissFloatingDetails: () -> Unit = {},
 ) {
-    var detailsOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(shouldShowViews) {
-        if (!shouldShowViews) {
-            detailsOpen = false
-        }
-    }
-
     val source = resolveStatusSource(importedState.phase, freezeState.mode)
     val selectedContent = when (source) {
         StatusSource.ImportedImage -> importedState.snapshot
@@ -81,38 +66,6 @@ internal fun FinderStatusRegion(
         } else {
             null
         }
-    }
-    val selectedDetails = when (source) {
-        StatusSource.ImportedImage,
-        StatusSource.FrozenFrame,
-        StatusSource.LiveCamera -> {
-            val outlinedCount = when (source) {
-                StatusSource.ImportedImage,
-                StatusSource.FrozenFrame -> highlights.outlines.size
-                else -> presentation.outlinedElements.size
-            }
-            val retainedOutlines = source == StatusSource.LiveCamera &&
-                presentation.outlinedElements.isNotEmpty() &&
-                presentation.occurrences.any { it.firstMissingAtMillis != null }
-            val sourceMessage = if (
-                source == StatusSource.LiveCamera &&
-                state.status != OcrStatus.Scanning &&
-                state.status != OcrStatus.TextRecognized
-            ) {
-                state.message.takeIf(String::isNotBlank)
-            } else {
-                null
-            }
-            recognitionDetails(
-                source = source,
-                content = selectedContent,
-                outlinedElementCount = outlinedCount.takeIf { selectedContent != null },
-                retainedOutlines = retainedOutlines,
-                sourceMessage = sourceMessage,
-            )
-        }
-        StatusSource.ImportProgress,
-        StatusSource.FreezingFrame -> null
     }
     val statusMessage = when (source) {
         StatusSource.ImportProgress -> when (importedState.phase) {
@@ -188,7 +141,14 @@ internal fun FinderStatusRegion(
         }
     }
     if (floatingContent != null) {
-        floatingContent(statusMessage) {
+        val label = if (state.status == OcrStatus.PermissionRequired &&
+            source == StatusSource.LiveCamera
+        ) {
+            stringResource(Res.string.scanner_camera_access_needed)
+        } else {
+            statusMessage
+        }
+        floatingContent(label) {
             messages()
             if (source == StatusSource.LiveCamera && state.status == OcrStatus.Error) {
                 ContextMessage(message = statusMessage, isError = true, floating = true)
@@ -200,22 +160,13 @@ internal fun FinderStatusRegion(
     if (floatingContent == null && statusVisible) {
         StatusSummary(
             message = statusMessage,
-            details = selectedDetails.takeIf { shouldShowViews },
-            onDetails = { detailsOpen = true },
+            details = null,
+            onDetails = {},
             isError = source == StatusSource.LiveCamera && state.status == OcrStatus.Error,
             stageBand = liveStageBand,
         )
     }
-    if ((detailsOpen || floatingDetailsOpen) && shouldShowViews && selectedDetails != null) {
-        StatusDetailsDialog(
-            title = stringResource(Res.string.status_details_title),
-            details = selectedDetails,
-            onDismissRequest = {
-                detailsOpen = false
-                onDismissFloatingDetails()
-            },
-        )
-    }
+
 }
 
 @Composable

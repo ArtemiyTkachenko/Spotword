@@ -4,8 +4,6 @@ import androidx.compose.runtime.Composable
 import com.artkachenko.livetextfinder.ScreenshotTier
 import com.artkachenko.livetextfinder.ScreenshotVariant
 import com.artkachenko.livetextfinder.assertScreenshot
-import com.artkachenko.livetextfinder.camera.LiveCaptureActions
-import com.artkachenko.livetextfinder.camera.LiveCaptureControls
 import com.artkachenko.livetextfinder.drainMainLooper
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.finder_find_text
@@ -95,29 +93,9 @@ class ElementScreenshotTest {
         )
     }
 
-    @Test
-    fun captureControlRow() {
-        val controls = LiveCaptureControls({ true }, { true })
-        val lease = controls.attach(UnusedCaptureActions, onDetach = ::ignore)
-        controls.update(lease) {
-            it.copy(ready = true, maxZoom = 4f, zoom = 2f, hasFlash = true, hasFocus = true)
-        }
-        capture("live-capture-control-row", "ready") {
-            LiveCaptureControlRow(controls, contextEnabled = true)
-        }
-    }
-
     private fun capture(subject: String, state: String, content: @Composable () -> Unit) {
         assertScreenshot(ScreenshotTier.ELEMENT, subject, state, ScreenshotVariant.LIGHT, content)
     }
 
     private fun ignore() = Unit
-
-    private object UnusedCaptureActions : LiveCaptureActions {
-        override fun zoom(ratio: Float) = Unit
-
-        override fun torch(enabled: Boolean) = Unit
-
-        override fun focus() = Unit
-    }
 }

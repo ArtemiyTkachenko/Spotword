@@ -3,7 +3,6 @@ package com.artkachenko.livetextfinder.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
@@ -20,11 +19,15 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.artkachenko.livetextfinder.search.SavedSearchList
 import com.artkachenko.livetextfinder.search.SearchListEditorState
+import com.artkachenko.livetextfinder.search.SearchListTransferState
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.search_list_delete
 import livetextfinder.shared.generated.resources.search_list_delete_accessibility
 import livetextfinder.shared.generated.resources.search_list_edit
 import livetextfinder.shared.generated.resources.search_list_edit_accessibility
+import livetextfinder.shared.generated.resources.search_list_export
+import livetextfinder.shared.generated.resources.search_list_export_accessibility
+import livetextfinder.shared.generated.resources.search_list_import
 import livetextfinder.shared.generated.resources.search_list_select_accessibility
 import livetextfinder.shared.generated.resources.search_list_selected
 import livetextfinder.shared.generated.resources.search_list_term_count
@@ -48,6 +51,9 @@ internal fun FinderSearchLists(
     onTermsChange: (String) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
+    transferState: SearchListTransferState = SearchListTransferState(),
+    onImportList: () -> Unit = { Unit },
+    onExportList: (SavedSearchList) -> Unit = { Unit },
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(FinderSpacing.large),
@@ -64,6 +70,13 @@ internal fun FinderSearchLists(
                 modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.titleMedium,
             )
+            if (transferState.supported) {
+                FinderSecondaryAction(
+                    label = stringResource(Res.string.search_list_import),
+                    onClick = onImportList,
+                    enabled = transferState.importEnabled,
+                )
+            }
             if (editor.isOpen) {
                 FinderSecondaryAction(
                     label = stringResource(Res.string.search_lists_new),
@@ -96,6 +109,12 @@ internal fun FinderSearchLists(
                     onSelect = { onSelect(list.id) },
                     onEdit = { onEdit(list) },
                     onDelete = { onDelete(list) },
+                    onExport = if (transferState.supported) {
+                        { onExportList(list) }
+                    } else {
+                        null
+                    },
+                    exportEnabled = transferState.exportEnabled,
                 )
             }
         }
@@ -119,6 +138,8 @@ private fun SearchListRow(
     onSelect: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onExport: (() -> Unit)?,
+    exportEnabled: Boolean,
 ) {
     val selectLabel = stringResource(Res.string.search_list_select_accessibility, list.name)
     val editLabel = stringResource(Res.string.search_list_edit_accessibility, list.name)
@@ -168,11 +189,22 @@ private fun SearchListRow(
                         )
                     }
                 }
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = FinderSpacing.small),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
+                    itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
+                    if (onExport != null) {
+                        FinderSecondaryAction(
+                            label = stringResource(Res.string.search_list_export),
+                            onClick = onExport,
+                            enabled = exportEnabled,
+                            accessibilityLabel = stringResource(
+                                Res.string.search_list_export_accessibility,
+                                list.name,
+                            ),
+                        )
+                    }
                     FinderSecondaryAction(
                         label = stringResource(Res.string.search_list_edit),
                         onClick = onEdit,

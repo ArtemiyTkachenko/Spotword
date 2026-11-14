@@ -1039,3 +1039,31 @@ focus, hides the keyboard and closes term results before opening occurrences.
 
 No Kotlin formatter is configured. Device rendering over real camera imagery, one-handed
 reach, physical pinch behavior and TalkBack remain unverified.
+
+## Floating control edge and removal of tests for retired layouts — 2026-11-14
+
+Floating scanner controls gained a 1dp light edge (`FinderCameraOverlay.controlOutline`) so
+they stay visible on a black backdrop; 47 baselines were re-recorded for that change and three
+of the screens were reviewed by eye.
+
+The redesign had moved the retired dock, top region, capture row and inspection controls into
+Android host test sources so their tests kept passing. Twenty-one tests whose only subject was
+one of those copies were removed, with their 33 baselines: twelve in `RegionScreenshotTest`,
+one in `ElementScreenshotTest`, two in `LiveTextFinderThemeTest`, four in
+`StillInspectionUiTest`, and both tests in `LiveCaptureControlRowTest`. The test-only copies
+`LiveCaptureControlRow` and `FinderTopRegion` were deleted. Lease behaviour that
+`LiveCaptureControlRowTest` exercised through the old row remains covered at the owner level
+by `LiveCaptureControlsTest` and `AndroidLiveCaptureControlsTest`.
+
+Still present as test-only copies: `FinderLiveDock`, `FinderLiveAppBar`,
+`StillInspectionControls` (with `StillMatchNavigationControls`) and `FinderContentAssembly`.
+Four tests drive live code through them: saved-search controller and term-results
+synchronisation, routing through `RetainedInspectionActionDispatcher`, and retained-image
+viewport and focus behaviour. They assert on production logic but reach it through UI the app
+no longer shows. The floating scanner controls have screenshot coverage only; no test yet
+checks their routing, semantics or touch targets.
+
+A clean uncached host run passed **463 tests in 66 suites with 0 failures** against 77
+baselines (51 element, 16 region, 10 screen). `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. Not run on a device.
+

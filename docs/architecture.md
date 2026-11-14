@@ -214,7 +214,7 @@ The live viewport fills the window behind a floating top row and bottom controls
 Safe-drawing and keyboard insets apply to the controls. The search field stays mounted as
 the keyboard opens. Short windows hide the zoom pills first and then the action labels.
 Frozen and imported images use the same shell and fit to the viewport above the measured
-bottom stack. Recognition details, retained Reset view, and Occurrences are in Options.
+bottom stack. Options contains Highlight color, Help and retained Reset view. Lists owns Android import and per-row export. The retained results dialog links to Occurrences.
 The status pill opens per-term results. The stacked list manager remains scrollable.
 
 Android pinch zoom uses the camera lease and the same admission and fresh-frame gates as the

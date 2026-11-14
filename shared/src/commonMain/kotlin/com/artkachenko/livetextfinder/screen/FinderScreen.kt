@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntSize
+import com.artkachenko.livetextfinder.AppAppearance
 import com.artkachenko.livetextfinder.camera.FreezeMode
 import com.artkachenko.livetextfinder.camera.ImageShareStatus
 import com.artkachenko.livetextfinder.camera.LiveSearchAreaLifecycle
@@ -55,7 +56,11 @@ import org.jetbrains.compose.resources.stringResource
  * through [FinderSourceContext] where a callback must compare against current state.
  */
 @Composable
-internal fun FinderScreen(session: SearchSessionController) {
+internal fun FinderScreen(
+    session: SearchSessionController,
+    appearance: AppAppearance,
+    onAppearanceChange: (AppAppearance) -> Unit,
+) {
     var ocrState by remember { mutableStateOf(OcrUiState()) }
     val sessionState = session.state.value
     val activeSearch = sessionState.activeSearch
@@ -192,11 +197,6 @@ internal fun FinderScreen(session: SearchSessionController) {
     val floatingLive = layoutMode == FinderLayoutMode.Live
     val floatingRetained = layoutMode == FinderLayoutMode.StillInspection && shouldShowViews
     val floatingScanner = floatingLive || floatingRetained
-    val recognitionDetailsAvailable = floatingRetained ||
-        importedState.phase.allowsLiveCamera && freezeState.mode == FreezeMode.Live
-    LaunchedEffect(floatingScanner, recognitionDetailsAvailable) {
-        if (!floatingScanner || !recognitionDetailsAvailable) dialogs.recognitionDetailsOpen = false
-    }
     val floatingViewport = floatingScanner || layoutMode == FinderLayoutMode.AreaEditing
     val viewport: @Composable (Modifier) -> Unit = { modifier ->
         FinderViewport(
@@ -229,8 +229,6 @@ internal fun FinderScreen(session: SearchSessionController) {
                 shouldShowViews = shouldShowViews,
                 liveStageBand = shouldShowViews && layoutMode.isLiveCamera,
                 floatingContent = floatingContent,
-                floatingDetailsOpen = floatingScanner && dialogs.recognitionDetailsOpen,
-                onDismissFloatingDetails = { dialogs.recognitionDetailsOpen = false },
                 onRetrySavedData = searchEditing::retrySavedSearches,
                 onRequestReset = { dialogs.resetConfirmOpen = true },
             )
@@ -249,6 +247,7 @@ internal fun FinderScreen(session: SearchSessionController) {
                         onFreeze = actions::capture,
                         onCancelFreeze = actions::cancelCapture,
                         areaEnabled = labels.liveArea != null,
+                        areaSelected = liveArea.area != null,
                         onArea = actions::startAreaEditing,
                         importEnabled = importedState.phase.allowsLiveCamera,
                         importPending = importedState.phase.isImportInProgress,
@@ -323,6 +322,9 @@ internal fun FinderScreen(session: SearchSessionController) {
                         onSelect = searchEditing::selectList,
                         onEdit = searchEditing::editList,
                         onDelete = searchEditing::requestDelete,
+                        transferState = transferState,
+                        onImportList = transferOwner::importList,
+                        onExportList = transferOwner::exportList,
                         onNameChange = searchEditing::updateDraftName,
                         onTermsChange = searchEditing::updateDraftTerms,
                         onSave = searchEditing::saveDraft,
@@ -333,20 +335,14 @@ internal fun FinderScreen(session: SearchSessionController) {
         )
     }
     FinderDialogs(
+        appearance = appearance,
+        onAppearanceChange = onAppearanceChange,
         dialogs = dialogs,
         sessionState = sessionState,
         searchState = searchState,
         inspection = inspection,
         searchEditing = searchEditing,
         liveArea = liveArea,
-        transferState = transferState,
-        actions = actions,
-        liveAreaLabel = labels.liveArea,
-        showImport = importedState.phase.allowsLiveCamera,
         shouldShowViews = shouldShowViews,
-        onImportList = transferOwner::importList,
-        onExportList = transferOwner::exportSelectedList,
-        floatingLive = floatingScanner,
-        recognitionDetailsAvailable = recognitionDetailsAvailable,
     )
 }
