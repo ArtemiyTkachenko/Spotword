@@ -47,9 +47,9 @@ import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.artkachenko.livetextfinder.search.inMemorySearchSessionController
+import com.artkachenko.livetextfinder.ui.AppContentColumn
 import com.artkachenko.livetextfinder.ui.FinderCaptureActions
 import com.artkachenko.livetextfinder.ui.FinderCaptureControls
-import com.artkachenko.livetextfinder.ui.FinderContentAssembly
 import com.artkachenko.livetextfinder.ui.FinderPrimaryAction
 import com.artkachenko.livetextfinder.ui.FinderSearchBar
 import com.artkachenko.livetextfinder.ui.FinderSearchControls
@@ -204,49 +204,43 @@ class LiveTextFinderThemeTest {
         mount(widthDp = 360, heightDp = 800) {
             LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
                 Surface(Modifier.fillMaxSize()) {
-                    FinderContentAssembly(
+                    AppContentColumn(
                         scrollState = ScrollState(0),
                         scrollable = false,
                         modifier = Modifier.fillMaxSize(),
-                        topContent = {
-                            FinderSearchControls(
-                                showTitle = true,
-                                search = FinderSearchBar(
-                                    query = query.value,
-                                    onQueryChange = { query.value = it },
-                                    searchListsLabel = listButtonLabel.value,
-                                    onSearchLists = {
-                                        listClicks.intValue++
-                                        listButtonLabel.value = "Close lists"
-                                    },
-                                    onResults = { resultsClicks.intValue++ },
-                                ),
-                                onOptions = ::ignoreAction,
-                                resultsLabel = "Results (3)",
-                            )
-                        },
-                        managerContent = {},
-                        viewportContent = {
-                            Box(
-                                Modifier.weight(1f).fillMaxWidth().onSizeChanged {
-                                    previewSize.value = it
+                    ) {
+                        FinderSearchControls(
+                            showTitle = true,
+                            search = FinderSearchBar(
+                                query = query.value,
+                                onQueryChange = { query.value = it },
+                                searchListsLabel = listButtonLabel.value,
+                                onSearchLists = {
+                                    listClicks.intValue++
+                                    listButtonLabel.value = "Close lists"
                                 },
-                            )
-                        },
-                        footerContent = {
-                            FinderCaptureControls(
-                                actions = FinderCaptureActions(
-                                    captureLabel = "Freeze frame",
-                                    captureEnabled = captureEnabled.value,
-                                    onCapture = { captureClicks.intValue++ },
-                                    pendingCaptureLabel = null,
-                                    onCancelCapture = ::ignoreAction,
-                                    secondaryActionLabel = null,
-                                    onSecondaryAction = ::ignoreAction,
-                                ),
-                            )
-                        },
-                    )
+                                onResults = { resultsClicks.intValue++ },
+                            ),
+                            onOptions = ::ignoreAction,
+                            resultsLabel = "Results (3)",
+                        )
+                        Box(
+                            Modifier.weight(1f).fillMaxWidth().onSizeChanged {
+                                previewSize.value = it
+                            },
+                        )
+                        FinderCaptureControls(
+                            actions = FinderCaptureActions(
+                                captureLabel = "Freeze frame",
+                                captureEnabled = captureEnabled.value,
+                                onCapture = { captureClicks.intValue++ },
+                                pendingCaptureLabel = null,
+                                onCancelCapture = ::ignoreAction,
+                                secondaryActionLabel = null,
+                                onSecondaryAction = ::ignoreAction,
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -398,70 +392,64 @@ class LiveTextFinderThemeTest {
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background,
                         ) {
-                            FinderContentAssembly(
+                            AppContentColumn(
                                 scrollState = scrollState,
                                 scrollable = fixture.scrollable,
                                 modifier = Modifier.fillMaxSize(),
-                                topContent = {
-                                    Column(
-                                        modifier = Modifier.onSizeChanged {
-                                            controlsSize.value = it
-                                        }.fillMaxWidth().padding(
-                                            horizontal = FinderSpacing.large,
-                                            vertical = FinderSpacing.extraSmall,
+                            ) {
+                                Column(
+                                    modifier = Modifier.onSizeChanged {
+                                        controlsSize.value = it
+                                    }.fillMaxWidth().padding(
+                                        horizontal = FinderSpacing.large,
+                                        vertical = FinderSpacing.extraSmall,
+                                    ),
+                                ) {
+                                    FinderSearchControls(
+                                        showTitle = fixture.height >= 500 &&
+                                            fixture.fontScale < 1.3f,
+                                        search = FinderSearchBar(
+                                            query = "invoice-2048",
+                                            onQueryChange = ::ignoreQueryChange,
+                                            searchListsLabel = "Lists",
+                                            onSearchLists = ::ignoreAction,
+                                            onResults = ::ignoreAction,
                                         ),
+                                        onOptions = ::ignoreAction,
+                                        resultsLabel = "Results (4)",
+                                        searchContext = fixture.searchContext,
+                                    )
+                                }
+                                if (fixture.hasPreview) {
+                                    Box(
+                                        modifier = Modifier.weight(1f)
+                                            .fillMaxWidth()
+                                            .background(Color.Black)
+                                            .onSizeChanged {
+                                                placeholderPreviewSize.value = it
+                                            },
+                                        contentAlignment = Alignment.Center,
                                     ) {
-                                        FinderSearchControls(
-                                            showTitle = fixture.height >= 500 &&
-                                                fixture.fontScale < 1.3f,
-                                            search = FinderSearchBar(
-                                                query = "invoice-2048",
-                                                onQueryChange = ::ignoreQueryChange,
-                                                searchListsLabel = "Lists",
-                                                onSearchLists = ::ignoreAction,
-                                                onResults = ::ignoreAction,
-                                            ),
-                                            onOptions = ::ignoreAction,
-                                            resultsLabel = "Results (4)",
-                                            searchContext = fixture.searchContext,
+                                        Text(
+                                            "Camera preview fixture · no live camera",
+                                            color = Color.White,
                                         )
                                     }
-                                },
-                                managerContent = {},
-                                viewportContent = {
-                                    if (fixture.hasPreview) {
-                                        Box(
-                                            modifier = Modifier.weight(1f)
-                                                .fillMaxWidth()
-                                                .background(Color.Black)
-                                                .onSizeChanged {
-                                                    placeholderPreviewSize.value = it
-                                                },
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(
-                                                "Camera preview fixture · no live camera",
-                                                color = Color.White,
-                                            )
-                                        }
-                                    }
-                                },
-                                footerContent = {
-                                    Box(Modifier.onSizeChanged { footerSize.value = it }) {
-                                        FinderCaptureControls(
-                                            actions = FinderCaptureActions(
-                                                captureLabel = "Freeze frame",
-                                                captureEnabled = true,
-                                                onCapture = ::ignoreAction,
-                                                pendingCaptureLabel = null,
-                                                onCancelCapture = ::ignoreAction,
-                                                secondaryActionLabel = null,
-                                                onSecondaryAction = ::ignoreAction,
-                                            ),
-                                        )
-                                    }
-                                },
-                            )
+                                }
+                                Box(Modifier.onSizeChanged { footerSize.value = it }) {
+                                    FinderCaptureControls(
+                                        actions = FinderCaptureActions(
+                                            captureLabel = "Freeze frame",
+                                            captureEnabled = true,
+                                            onCapture = ::ignoreAction,
+                                            pendingCaptureLabel = null,
+                                            onCancelCapture = ::ignoreAction,
+                                            secondaryActionLabel = null,
+                                            onSecondaryAction = ::ignoreAction,
+                                        ),
+                                    )
+                                }
+                            }
                         }
                     }
                 }

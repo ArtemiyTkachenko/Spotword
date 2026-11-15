@@ -13,13 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
-import com.artkachenko.livetextfinder.status.RecognitionDetails
 import com.artkachenko.livetextfinder.status.SearchFeedback
 import com.artkachenko.livetextfinder.status.SearchFeedbackKind
 import com.artkachenko.livetextfinder.status.StatusSource
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.status_area_waiting
-import livetextfinder.shared.generated.resources.status_details
 import livetextfinder.shared.generated.resources.status_empty_content
 import livetextfinder.shared.generated.resources.status_enter_query
 import livetextfinder.shared.generated.resources.status_freezing
@@ -41,8 +39,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun StatusSummary(
     message: String,
-    details: RecognitionDetails?,
-    onDetails: () -> Unit,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
     stageBand: Boolean = false,
@@ -61,11 +57,7 @@ internal fun StatusSummary(
         Row(
             modifier = Modifier.padding(
                 horizontal = FinderSpacing.medium,
-                vertical = if (stageBand || details != null) {
-                    FinderSpacing.extraSmall
-                } else {
-                    FinderSpacing.small
-                },
+                vertical = if (stageBand) FinderSpacing.extraSmall else FinderSpacing.small,
             ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(FinderSpacing.small),
@@ -81,12 +73,6 @@ internal fun StatusSummary(
                 style = MaterialTheme.typography.bodyMedium,
                 minLines = if (stageBand) 2 else 1,
             )
-            if (details != null) {
-                FinderSecondaryAction(
-                    label = stringResource(Res.string.status_details),
-                    onClick = onDetails,
-                )
-            }
         }
     }
 }

@@ -78,8 +78,6 @@ class ElementScreenshotTest {
     fun statusSummaryWithStageBand() = capture("status-summary", "stage-band") {
         StatusSummary(
             stringResource(Res.string.status_scanning),
-            details = null,
-            onDetails = ::ignore,
             stageBand = true,
         )
     }
@@ -88,8 +86,6 @@ class ElementScreenshotTest {
     fun statusSummaryWithoutStageBand() = capture("status-summary", "standard") {
         StatusSummary(
             stringResource(Res.string.status_scanning),
-            details = null,
-            onDetails = ::ignore,
         )
     }
 

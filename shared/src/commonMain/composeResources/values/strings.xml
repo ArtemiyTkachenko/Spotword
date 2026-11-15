@@ -124,9 +124,6 @@
         <item quantity="one">and %1$d more</item>
         <item quantity="other">and %1$d more</item>
     </plurals>
-    <string name="status_details">Details</string>
-    <string name="status_details_close">Close</string>
-    <string name="status_details_title">Recognition details</string>
     <string name="status_import_choosing">Choosing image…</string>
     <string name="status_import_reading">Reading image…</string>
     <string name="status_import_recognizing">Recognizing text…</string>
@@ -150,17 +147,8 @@
     <string name="status_paused">Scanning paused</string>
     <string name="status_unavailable">Camera unavailable</string>
     <string name="status_camera_error_recovery">Camera recognition failed. Check camera access and retry the camera.</string>
-    <string name="status_lines">Recognized lines: %1$d</string>
-    <string name="status_source_imported">Source: imported image</string>
-    <string name="status_source_frozen">Source: frozen frame</string>
     <string name="status_source_live">Source: live camera</string>
     <string name="status_empty_content">Recognized text: unavailable</string>
-    <string name="status_latin_boundary">Recognition supports printed Latin text.</string>
-    <string name="status_retention">Older outlines may remain briefly; counts use the latest result.</string>
-    <string name="status_dimensions">Image: %1$d × %2$d pixels</string>
-    <string name="status_dimensions_rotation">Frame: %1$d × %2$d pixels · rotation %3$d°</string>
-    <string name="status_text_sample">Text sample: %1$s</string>
-    <string name="status_no_text_sample">No recognized text sample is available.</string>
     <string name="status_import_error">Image import failed</string>
     <string name="status_recovery">Saved search data needs recovery.</string>
     <string name="status_reset_saved_data">Reset saved data</string>
@@ -191,10 +179,6 @@
     <plurals name="status_match_count">
         <item quantity="one">%1$d match</item>
         <item quantity="other">%1$d matches</item>
-    </plurals>
-    <plurals name="status_outlined_count">
-        <item quantity="one">%1$d outlined element</item>
-        <item quantity="other">%1$d outlined elements</item>
     </plurals>
     <string name="capture_zoom_in">Zoom in</string>
     <string name="capture_zoom_out">Zoom out</string>

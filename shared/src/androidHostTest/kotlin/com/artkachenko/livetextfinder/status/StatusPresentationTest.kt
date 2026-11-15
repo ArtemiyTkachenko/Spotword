@@ -193,44 +193,4 @@ class StatusPresentationTest {
         assertEquals(0, unavailable.matchCount)
         assertTrue(unavailable.retainedOutlines)
     }
-
-    @Test
-    fun detailsUseOnlyTheSelectedSourceAndBoundTheTextSample() {
-        val imported = recognitionDetails(
-            source = StatusSource.ImportedImage,
-            content = recognized,
-            outlinedElementCount = 2,
-            retainedOutlines = false,
-        )
-        assertEquals(StatusSource.ImportedImage, imported.source)
-        assertEquals(1, imported.recognizedLineCount)
-        assertEquals(640, imported.imageWidth)
-        assertEquals(480, imported.imageHeight)
-        assertEquals(null, imported.rotationDegrees)
-        assertEquals("invoice paid", imported.textSample)
-        assertEquals(2, imported.outlinedElementCount)
-
-        val unavailableLive = recognitionDetails(
-            source = StatusSource.LiveCamera,
-            content = null,
-            outlinedElementCount = null,
-            retainedOutlines = true,
-            sourceMessage = "Camera access is disabled.",
-        )
-        assertEquals(null, unavailableLive.recognizedLineCount)
-        assertEquals(null, unavailableLive.imageWidth)
-        assertEquals(null, unavailableLive.outlinedElementCount)
-        assertTrue(unavailableLive.textUnavailable)
-        assertTrue(unavailableLive.retainedOutlines)
-        assertEquals("Camera access is disabled.", unavailableLive.sourceMessage)
-
-        val longSample = "word ".repeat(100)
-        val bounded = recognitionDetails(
-            StatusSource.ImportedImage,
-            recognized.copy(text = longSample),
-            outlinedElementCount = 0,
-            retainedOutlines = false,
-        )
-        assertEquals(240, bounded.textSample?.length)
-    }
 }

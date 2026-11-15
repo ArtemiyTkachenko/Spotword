@@ -160,8 +160,6 @@ internal fun FinderStatusRegion(
     if (floatingContent == null && statusVisible) {
         StatusSummary(
             message = statusMessage,
-            details = null,
-            onDetails = {},
             isError = source == StatusSource.LiveCamera && state.status == OcrStatus.Error,
             stageBand = liveStageBand,
         )

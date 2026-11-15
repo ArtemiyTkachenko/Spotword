@@ -1067,3 +1067,56 @@ A clean uncached host run passed **463 tests in 66 suites with 0 failures** agai
 baselines (51 element, 16 region, 10 screen). `:shared:compileKotlinIosSimulatorArm64` and
 `:androidApp:compileDebugKotlin` succeeded. Not run on a device.
 
+
+## Behavioural tests for the floating controls — 2026-11-14
+
+The four tests that reached live logic through test-only copies of the retired dock, app bar
+and inspection controls were replaced by tests of the controls the app now shows:
+
+- `RetainedInspectionActionDispatcherTest` (common, five tests) checks the call order of
+  `toggleLists`, `showTerms`, `showOccurrences` and `returnToSource` directly.
+- `StillInspectionUiTest` mounts `FloatingLiveScanner` in its retained mode and
+  `FloatingScannerActionBar(retainedActions(...))`. It checks that Lists, Copy, Share and Camera
+  route to their callbacks, that Share becomes Cancel share while an image is prepared, that
+  Copy is disabled without a selection, that the retained viewport keeps the same positive
+  bounds across light and dark themes, match count, share state and an active list, that zoom,
+  match and settings buttons are at least 48dp, and that stepping matches at font scale 1.5
+  changes neither the viewport size nor a 2× zoom.
+- `StatusFeedbackTest` wires `FloatingScannerSearchField` and `FloatingScannerStatusPill` to a
+  real `SearchSessionController`. It checks the Whole words toggle (state description, match
+  mode, search identity), the list chip's Use manual search button (48dp, invalidates before
+  the mutation, keeps the manual query), typing leaving list mode, and that the term results
+  dialog opened from the status pill hides counts when results are not current.
+
+The test-only copies `FinderLiveDock`, `FinderLiveAppBar` and `StillInspectionControls` were
+deleted.
+
+The last four copies (`FinderContentAssembly`, `LegacyFinderStatusRegion`,
+`LegacyFinderOptionsSheet`, `StatusDetailsDialog`) were then removed as well, so no retired
+composable remains in test sources:
+
+- Layout fixtures in `StatusFeedbackTest` and `LiveTextFinderThemeTest` call the production
+  `AppContentColumn` directly, and the status fixtures call the production
+  `FinderStatusRegion`.
+- The options sheet tests drive the production `FinderOptionsSheet`: its four rows (highlight
+  colour, appearance, reset view, help) meet 48dp, close the sheet before their callback, the
+  disabled highlight row ignores touch, Reset view is absent without a retained image, and
+  Back dismisses once. The fixture forces a 360dp window, in which the short sheet sits
+  partly below the window edge, so rows are checked against the sheet viewport only.
+- Status tests no longer open a recognition details dialog; they assert that the summary
+  follows the selected source, hides with the views, and never shows raw camera messages.
+- Removed because their subject is gone or covered elsewhere: the list-transfer rows in the
+  options sheet (`FinderSearchListsTest` covers them in the list manager), the recognition
+  details dialog test, and the `status-details-dialog` screenshot test with its three
+  baselines.
+
+Recognition details are no longer reachable in the app, so the leftover code was removed:
+`RecognitionDetails`, `recognitionDetails`, the `details` and `onDetails` parameters of
+`StatusSummary`, the `StatusPresentationTest` case for the computation, and thirteen string
+resources used only by the details dialog and its button.
+
+A clean uncached host run passed **468 tests in 67 suites with 0 failures** against 76
+baselines (51 element, 13 region, 12 screen); no baseline was re-recorded, including the two
+`status-summary` ones. `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
+device.

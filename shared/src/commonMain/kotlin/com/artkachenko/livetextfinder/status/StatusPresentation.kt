@@ -2,8 +2,6 @@ package com.artkachenko.livetextfinder.status
 
 import com.artkachenko.livetextfinder.camera.FreezeMode
 import com.artkachenko.livetextfinder.camera.ImportedImagePhase
-import com.artkachenko.livetextfinder.ocr.ImportedTextSnapshot
-import com.artkachenko.livetextfinder.ocr.OcrSnapshot
 import com.artkachenko.livetextfinder.ocr.RecognizedTextContent
 
 internal enum class StatusSource {
@@ -48,42 +46,6 @@ internal fun suppressUnavailableResultFeedback(
         return feedback
     }
     return feedback.copy(kind = SearchFeedbackKind.ResultsUnavailable, matchCount = 0)
-}
-
-internal data class RecognitionDetails(
-    val source: StatusSource,
-    val recognizedLineCount: Int?,
-    val outlinedElementCount: Int?,
-    val imageWidth: Int?,
-    val imageHeight: Int?,
-    val rotationDegrees: Int?,
-    val textSample: String?,
-    val textUnavailable: Boolean,
-    val retainedOutlines: Boolean,
-    val sourceMessage: String?,
-)
-
-internal fun recognitionDetails(
-    source: StatusSource,
-    content: RecognizedTextContent?,
-    outlinedElementCount: Int?,
-    retainedOutlines: Boolean,
-    sourceMessage: String? = null,
-): RecognitionDetails {
-    val imported = content as? ImportedTextSnapshot
-    val camera = content as? OcrSnapshot
-    return RecognitionDetails(
-        source = source,
-        recognizedLineCount = content?.lines?.size,
-        outlinedElementCount = outlinedElementCount,
-        imageWidth = imported?.width ?: camera?.frame?.uprightWidth,
-        imageHeight = imported?.height ?: camera?.frame?.uprightHeight,
-        rotationDegrees = camera?.frame?.rotationDegrees,
-        textSample = content?.text?.takeIf(String::isNotBlank)?.take(240),
-        textUnavailable = content == null || content.text.isBlank(),
-        retainedOutlines = retainedOutlines,
-        sourceMessage = sourceMessage,
-    )
 }
 
 internal fun resolveStatusSource(
