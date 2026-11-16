@@ -1,5 +1,6 @@
 package com.artkachenko.livetextfinder.screen
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -11,18 +12,21 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.artkachenko.livetextfinder.AppAppearance
 import com.artkachenko.livetextfinder.inspection.StillInspectionMatchesDialog
 import com.artkachenko.livetextfinder.inspection.StillInspectionState
+import com.artkachenko.livetextfinder.lists.FinderListsSheet
 import com.artkachenko.livetextfinder.lists.SavedSearchEditingState
 import com.artkachenko.livetextfinder.scanarea.LiveSearchAreaDialogHost
 import com.artkachenko.livetextfinder.scanarea.LiveSearchAreaState
+import com.artkachenko.livetextfinder.search.SearchListTransferOwner
 import com.artkachenko.livetextfinder.search.SearchSessionState
+import com.artkachenko.livetextfinder.status.SavedSearchStatusMessages
 import com.artkachenko.livetextfinder.ui.AppearanceDialog
 import com.artkachenko.livetextfinder.ui.ConfirmDestructiveDialog
-import com.artkachenko.livetextfinder.ui.appearanceLabel
 import com.artkachenko.livetextfinder.ui.FinderOptionsSheet
 import com.artkachenko.livetextfinder.ui.HighlightColorDialog
 import com.artkachenko.livetextfinder.ui.RetainedInspectionActionDispatcher
 import com.artkachenko.livetextfinder.ui.SearchTermResultsDialog
 import com.artkachenko.livetextfinder.ui.UsageHelpDialog
+import com.artkachenko.livetextfinder.ui.appearanceLabel
 import com.artkachenko.livetextfinder.ui.localizedHighlightColorName
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.finder_options_highlight
@@ -75,6 +79,8 @@ internal fun FinderDialogs(
     searchState: FinderSearchState,
     inspection: StillInspectionState,
     searchEditing: SavedSearchEditingState,
+    transferOwner: SearchListTransferOwner,
+    snackbarHostState: SnackbarHostState,
     liveArea: LiveSearchAreaState,
     shouldShowViews: Boolean,
 ) {
@@ -113,6 +119,20 @@ internal fun FinderDialogs(
                 null
             },
         )
+    }
+    if (searchEditing.isOpen) {
+        FinderListsSheet(
+            sessionState = sessionState,
+            searchEditing = searchEditing,
+            transferOwner = transferOwner,
+            snackbarHostState = snackbarHostState,
+        ) {
+            SavedSearchStatusMessages(
+                sessionState = sessionState,
+                onRetrySavedData = searchEditing::retrySavedSearches,
+                onRequestReset = { dialogs.resetConfirmOpen = true },
+            )
+        }
     }
     searchEditing.pendingDeleteId?.let { id ->
         val name = sessionState.persisted.lists.firstOrNull { list -> list.id == id }

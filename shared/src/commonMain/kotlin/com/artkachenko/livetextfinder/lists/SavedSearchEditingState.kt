@@ -35,6 +35,20 @@ internal class SavedSearchEditingState(
     var pendingDeleteId by mutableStateOf<String?>(null)
         private set
 
+    private var pendingDiscard by mutableStateOf<DiscardAction?>(null)
+
+    val isDiscardConfirmationOpen: Boolean
+        get() = pendingDiscard != null
+
+    val hasDirtyDraft: Boolean
+        get() {
+            if (!editor.isOpen) return false
+            val saved = session.state.value.persisted.lists
+                .firstOrNull { it.id == editor.editingId }
+            return editor.name != (saved?.name ?: "") ||
+                editor.terms != (saved?.terms?.joinToString("\n") ?: "")
+        }
+
     /** Invalidates pending list transfers after a search, list or editor change. */
     fun markContextChanged() {
         onTransferContextChanged()
@@ -62,15 +76,95 @@ internal class SavedSearchEditingState(
         session.retry()
     }
 
-    /** Opens or closes the manager and discards any editor draft. */
+    /** Opens the manager or requests dismissal of the open sheet. */
     fun toggle() {
+        if (isOpen) {
+            requestDismiss()
+        } else {
+            changeSheetVisibility()
+        }
+    }
+
+    /** Closes a clean sheet or asks before discarding its draft. */
+    fun requestDismiss() {
+        if (isOpen) {
+            requestDiscard(DiscardAction.CloseSheet)
+        }
+    }
+
+    /** Activates a valid row and returns to the scanner. */
+    fun selectFromSheet(id: String) {
+        if (isOpen && canSelectFromSheet(id)) {
+            requestDiscard(DiscardAction.SelectList(id))
+        }
+    }
+
+    fun keepEditing() {
+        pendingDiscard = null
+    }
+
+    fun confirmDiscard() {
+        val action = pendingDiscard ?: return
+        pendingDiscard = null
+        applyDiscardAction(action)
+    }
+
+    private fun requestDiscard(action: DiscardAction) {
+        if (isDiscardConfirmationOpen) return
+        if (hasDirtyDraft) {
+            pendingDiscard = action
+        } else {
+            applyDiscardAction(action)
+        }
+    }
+
+    private fun applyDiscardAction(action: DiscardAction) {
+        when (action) {
+            DiscardAction.CloseSheet -> closeSheet()
+            DiscardAction.NewList -> {
+                markContextChanged()
+                editor = editor.startNew()
+            }
+            is DiscardAction.SelectList -> {
+                if (canSelectFromSheet(action.id)) {
+                    closeSheet()
+                    session.selectList(action.id)
+                }
+            }
+            is DiscardAction.EditList -> {
+                val saved = session.state.value.persisted.lists
+                    .firstOrNull { it.id == action.id }
+                if (saved != null) {
+                    markContextChanged()
+                    editor = editor.edit(saved)
+                }
+            }
+        }
+    }
+
+    private fun canSelectFromSheet(id: String): Boolean {
+        val sessionState = session.state.value
+        return sessionState.loaded && sessionState.persisted.lists.any { it.id == id }
+    }
+
+    private fun closeSheet() {
+        changeSheetVisibility()
+        pendingDeleteId = null
+    }
+
+    private fun changeSheetVisibility() {
         RetainedInspectionActionDispatcher.toggleLists(
             managerOpen = isOpen,
             onContextChanged = ::markContextChanged,
-            setManagerOpen = { open -> isOpen = open },
+            setManagerOpen = { isOpen = it },
             collapseSearch = {},
             closeEditor = { editor = editor.close() },
         )
+    }
+
+    private fun closeEditor() {
+        markContextChanged()
+        editor = editor.close()
     }
 
     /** Shows an imported list as an unsaved draft; the transfer owner is the caller. */
@@ -81,13 +175,13 @@ internal class SavedSearchEditingState(
     }
 
     fun startNewList() {
-        markContextChanged()
-        editor = editor.startNew()
+        requestDiscard(DiscardAction.NewList)
     }
 
     fun editList(list: SavedSearchList) {
-        markContextChanged()
-        editor = editor.edit(list)
+        if (editor.editingId != list.id) {
+            requestDiscard(DiscardAction.EditList(list.id))
+        }
     }
 
     fun updateDraftName(name: String) {
@@ -108,8 +202,7 @@ internal class SavedSearchEditingState(
     }
 
     fun cancelDraft() {
-        markContextChanged()
-        editor = editor.close()
+        closeEditor()
     }
 
     /** Activates a saved list, or manual search for a null [id]. */
@@ -133,6 +226,13 @@ internal class SavedSearchEditingState(
             editor = editor.close()
         }
         pendingDeleteId = null
+    }
+
+    private sealed interface DiscardAction {
+        object CloseSheet : DiscardAction
+        object NewList : DiscardAction
+        data class SelectList(val id: String) : DiscardAction
+        data class EditList(val id: String) : DiscardAction
     }
 
     companion object {

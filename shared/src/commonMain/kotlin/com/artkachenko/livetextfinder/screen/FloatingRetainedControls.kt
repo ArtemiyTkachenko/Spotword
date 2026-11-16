@@ -3,6 +3,7 @@ package com.artkachenko.livetextfinder.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
@@ -77,6 +78,7 @@ internal fun FloatingRetainedPills(controls: FloatingRetainedControls) {
 internal fun retainedActions(
     search: FinderSearchBar,
     controls: FloatingRetainedControls,
+    listsFocusRequester: FocusRequester? = null,
 ): List<FloatingScannerAction> {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -85,6 +87,7 @@ internal fun retainedActions(
             Res.drawable.scanner_list,
             search.searchListsLabel,
             search.onSearchLists,
+            focusRequester = listsFocusRequester,
         ),
         FloatingScannerAction(
             Res.drawable.scanner_content_copy,

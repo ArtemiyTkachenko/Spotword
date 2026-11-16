@@ -87,9 +87,12 @@ internal fun assertAppScreenshot(
     state: String,
     variant: ScreenshotVariant,
     steps: List<(SemanticsNode) -> Unit>,
+    onCaptured: (ComponentActivity) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    assertScreenshot(ScreenshotTier.SCREEN, "app", state, variant, false, steps, content)
+    assertScreenshot(
+        ScreenshotTier.SCREEN, "app", state, variant, false, steps, content, onCaptured,
+    )
 }
 
 private fun assertScreenshot(
@@ -100,9 +103,10 @@ private fun assertScreenshot(
     requireDialog: Boolean,
     steps: List<(SemanticsNode) -> Unit>,
     content: @Composable () -> Unit,
+    onCaptured: (ComponentActivity) -> Unit = {},
 ) {
     val filename = "${subject}__${state}__${variant.suffix}.png"
-    val bitmap = captureScreenshot(tier, variant, requireDialog, steps, content)
+    val bitmap = captureScreenshot(tier, variant, requireDialog, steps, content, onCaptured)
     try {
         compareScreenshot(bitmap, "${tier.directory}/$filename")
     } finally {
@@ -140,6 +144,7 @@ private fun captureScreenshot(
     requireDialog: Boolean,
     steps: List<(SemanticsNode) -> Unit>,
     content: @Composable () -> Unit,
+    onCaptured: (ComponentActivity) -> Unit,
 ): Bitmap {
     val previousQualifiers = RuntimeEnvironment.getQualifiers()
     val previousFontScale = RuntimeEnvironment.getApplication().resources.configuration.fontScale
@@ -222,7 +227,15 @@ private fun captureScreenshot(
                         window.decorView.draw(canvas)
                     }
                 }
-                if (fullScreen) return bitmap
+                if (fullScreen) {
+                    try {
+                        onCaptured(activity)
+                        return bitmap
+                    } catch (failure: Throwable) {
+                        bitmap.recycle()
+                        throw failure
+                    }
+                }
                 try {
                     return bitmap.cropToContent(backgroundColor)
                 } finally {

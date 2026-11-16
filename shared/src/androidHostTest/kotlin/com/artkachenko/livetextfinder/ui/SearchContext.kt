@@ -18,9 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.artkachenko.livetextfinder.search.SearchMatchMode
 import livetextfinder.shared.generated.resources.Res
-import livetextfinder.shared.generated.resources.finder_match_substring
 import livetextfinder.shared.generated.resources.finder_match_whole_words
-import livetextfinder.shared.generated.resources.search_context_manual
 import livetextfinder.shared.generated.resources.search_context_terms
 import livetextfinder.shared.generated.resources.search_context_use_manual
 import livetextfinder.shared.generated.resources.search_list_term_count
@@ -49,18 +47,16 @@ internal fun SearchContext(
         val manualQuerySuffix = manualQuery.takeIf {
             compact && it.isNotBlank()
         }?.let { query -> " · $query" }.orEmpty()
-        stringResource(Res.string.search_context_manual) + manualQuerySuffix
+        "Manual search" + manualQuerySuffix
     }
     val termCountLabel = activeListName?.let {
         pluralStringResource(Res.plurals.search_list_term_count, termCount, termCount)
     }
-    val modeLabel = stringResource(
-        if (matchMode == SearchMatchMode.Substring) {
-            Res.string.finder_match_substring
-        } else {
-            Res.string.finder_match_whole_words
-        },
-    )
+    val modeLabel = if (matchMode == SearchMatchMode.Substring) {
+        "Contains text"
+    } else {
+        stringResource(Res.string.finder_match_whole_words)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(FinderSpacing.extraSmall)) {
         Row(
             modifier = Modifier.fillMaxWidth(),

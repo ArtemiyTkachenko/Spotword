@@ -14,13 +14,6 @@ import com.artkachenko.livetextfinder.drainMainLooper
 import com.artkachenko.livetextfinder.search.SavedSearchList
 import com.artkachenko.livetextfinder.search.SearchListEditorState
 import com.artkachenko.livetextfinder.search.SearchSessionError
-import livetextfinder.shared.generated.resources.Res
-import livetextfinder.shared.generated.resources.capture_cancel_freeze
-import livetextfinder.shared.generated.resources.capture_freeze
-import livetextfinder.shared.generated.resources.inspection_lists
-import livetextfinder.shared.generated.resources.inspection_results
-import livetextfinder.shared.generated.resources.search_lists_close
-import org.jetbrains.compose.resources.stringResource
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,21 +31,6 @@ class RegionScreenshotTest {
     @After
     fun tearDown() {
         drainMainLooper()
-    }
-
-    @Test
-    fun searchControlsInListManager() = capture("finder-search-controls", "list-manager") {
-        FinderSearchControls(
-            showTitle = true,
-            search = searchBar(activeList = receipts, managerOpen = true),
-            onOptions = ::ignore,
-            resultsLabel = stringResource(Res.string.inspection_results, 3),
-        )
-    }
-
-    @Test
-    fun captureControlsInListManager() = capture("finder-capture-controls", "list-manager") {
-        FinderCaptureControls(captureActions())
     }
 
     @Test
@@ -81,43 +59,6 @@ class RegionScreenshotTest {
             )
         }
     }
-
-    @Composable
-    private fun searchBar(
-        activeList: SavedSearchList? = null,
-        managerOpen: Boolean = false,
-    ): FinderSearchBar = FinderSearchBar(
-        query = "invoice",
-        onQueryChange = {},
-        searchListsLabel = stringResource(
-            if (managerOpen) Res.string.search_lists_close else Res.string.inspection_lists,
-        ),
-        onSearchLists = ::ignore,
-        activeListName = activeList?.name,
-        activeListTermCount = activeList?.terms?.size ?: 0,
-    )
-
-    @Composable
-    private fun captureActions(
-        freezePending: Boolean = false,
-        retained: Boolean = false,
-    ): FinderCaptureActions = FinderCaptureActions(
-        captureLabel = if (freezePending || retained) {
-            null
-        } else {
-            stringResource(Res.string.capture_freeze)
-        },
-        captureEnabled = !freezePending && !retained,
-        onCapture = ::ignore,
-        pendingCaptureLabel = if (freezePending) {
-            stringResource(Res.string.capture_cancel_freeze)
-        } else {
-            null
-        },
-        onCancelCapture = ::ignore,
-        secondaryActionLabel = null,
-        onSecondaryAction = ::ignore,
-    )
 
     @Composable
     private fun SearchLists(

@@ -60,19 +60,18 @@ internal fun finderSourceContext(
     val importedOwner = rememberImportedImageOwner()
     ImportedImagePicker(importedOwner)
     val frozenOwner = rememberFrozenFrameOwner()
-    val isContentVisible = { !searchEditing.isOpen }
+    val isContentVisible = { true }
     val captureContextCurrent = {
         val phase = importedOwner.state.value.phase
         frozenOwner.state.value.mode == FreezeMode.Live &&
             phase.allowsLiveCamera &&
             liveArea.isIdle &&
-            isContentVisible()
+            !searchEditing.isOpen
     }
     val captureSourceCurrent = {
         val phase = importedOwner.state.value.phase
         frozenOwner.state.value.mode != FreezeMode.Frozen &&
-            phase.allowsLiveCamera &&
-            isContentVisible()
+            phase.allowsLiveCamera
     }
     val latestCaptureContext by rememberUpdatedState(captureContextCurrent)
     val latestCaptureSource by rememberUpdatedState(captureSourceCurrent)

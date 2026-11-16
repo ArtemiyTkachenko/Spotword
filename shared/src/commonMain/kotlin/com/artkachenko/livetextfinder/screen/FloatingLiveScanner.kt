@@ -5,22 +5,28 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -78,16 +84,25 @@ internal fun FloatingLiveScanner(
     onOptions: () -> Unit,
     statusLabel: String,
     onStatus: () -> Unit,
-    snackbarHostState: SnackbarHostState,
+    snackbarHostState: SnackbarHostState?,
     modifier: Modifier = Modifier,
     statusEnabled: Boolean = true,
     matchModeEnabled: Boolean = true,
     messages: @Composable () -> Unit = { Unit },
     retained: FloatingRetainedControls? = null,
     retainedViewport: @Composable (Modifier) -> Unit = {},
+    listsOpen: Boolean = false,
 ) {
     val density = LocalDensity.current
     val keyboardOpen = WindowInsets.ime.getBottom(density) > 0
+    val hideDock = keyboardOpen && !listsOpen
+    val listsFocusRequester = remember { FocusRequester() }
+    var restoreListsFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(listsOpen) {
+        if (listsOpen) {
+            restoreListsFocus = true
+        }
+    }
     var bottomHeight by remember { mutableIntStateOf(0) }
     val cameraState = liveControls.state.value
     val lease = cameraState.lease
@@ -96,16 +111,21 @@ internal fun FloatingLiveScanner(
     BoxWithConstraints(
         modifier = modifier.fillMaxSize()
             .testTag("floating-live-scanner")
-            .safeDrawingPadding()
-            .imePadding()
+            .then(
+                if (listsOpen) {
+                    Modifier.windowInsetsPadding(WindowInsets.safeDrawing.exclude(WindowInsets.ime))
+                } else {
+                    Modifier.safeDrawingPadding().imePadding()
+                },
+            )
             .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 16.dp),
     ) {
-        val showZoom = retained == null && !keyboardOpen && maxHeight >= 476.dp && cameraState.hasZoom
+        val showZoom = retained == null && !hideDock && maxHeight >= 476.dp && cameraState.hasZoom
         val showLabels = maxHeight >= 336.dp
-        val showRetainedPills = retained != null && !keyboardOpen && showLabels
+        val showRetainedPills = retained != null && !hideDock && showLabels
         if (retained != null) {
             val bottom = with(density) { bottomHeight.toDp() }
-            val top = if (keyboardOpen) 0.dp else 56.dp
+            val top = if (hideDock) 0.dp else 56.dp
             retainedViewport(
                 Modifier.fillMaxWidth().align(Alignment.TopCenter)
                     .padding(top = top)
@@ -116,7 +136,7 @@ internal fun FloatingLiveScanner(
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (!keyboardOpen) {
+            if (!hideDock) {
                 FloatingLiveTopRow(
                     cameraState = if (retained == null) cameraState else LiveCaptureState(),
                     flashEnabled = cameraActionsEnabled && !cameraState.torchPending,
@@ -133,7 +153,9 @@ internal fun FloatingLiveScanner(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SnackbarHost(snackbarHostState)
+            if (snackbarHostState != null) {
+                SnackbarHost(snackbarHostState)
+            }
             Column(
                 modifier = Modifier.onSizeChanged { bottomHeight = it.height },
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -172,15 +194,22 @@ internal fun FloatingLiveScanner(
                     matchModeEnabled = matchModeEnabled,
                     onUseManual = searchBar.onUseManual,
                 )
-                if (!keyboardOpen) {
+                if (!hideDock) {
+                    LaunchedEffect(listsOpen, restoreListsFocus) {
+                        if (!listsOpen && restoreListsFocus) {
+                            listsFocusRequester.requestFocus()
+                            restoreListsFocus = false
+                        }
+                    }
                     FloatingScannerActionBar(
                         actions = if (retained != null) {
-                            retainedActions(searchBar, retained)
+                            retainedActions(searchBar, retained, listsFocusRequester)
                         } else listOf(
                             FloatingScannerAction(
                                 icon = Res.drawable.scanner_list,
                                 label = searchBar.searchListsLabel,
                                 onClick = searchBar.onSearchLists,
+                                focusRequester = listsFocusRequester,
                             ),
                             FloatingScannerAction(
                                 icon = Res.drawable.scanner_crop_free,

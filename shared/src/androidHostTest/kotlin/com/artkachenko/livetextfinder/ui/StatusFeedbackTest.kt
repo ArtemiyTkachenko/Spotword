@@ -84,7 +84,7 @@ import com.artkachenko.livetextfinder.search.SearchTermSummary
 import com.artkachenko.livetextfinder.search.dispatchSearchListSelection
 import com.artkachenko.livetextfinder.search.searchRecognizedContent
 import com.artkachenko.livetextfinder.search.searchRecognizedText
-import com.artkachenko.livetextfinder.status.FinderStatusRegion
+import com.artkachenko.livetextfinder.status.LegacyFinderStatusRegion
 import com.artkachenko.livetextfinder.status.UnavailableResultsGuidance
 import com.artkachenko.livetextfinder.status.unavailableResultsExplanation
 import com.artkachenko.livetextfinder.visualOutputDirectory
@@ -2549,7 +2549,7 @@ class StatusFeedbackTest {
             else -> liveSearch
         }
         val presentation = SearchPresentationOwner().present(search.spec, state, 0L)
-        FinderStatusRegion(
+        LegacyFinderStatusRegion(
             state = state,
             importedState = importedState,
             freezeState = freezeState,

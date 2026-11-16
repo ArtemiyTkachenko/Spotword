@@ -1,6 +1,8 @@
 package com.artkachenko.livetextfinder
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -9,13 +11,18 @@ import com.artkachenko.livetextfinder.search.inMemorySearchSessionController
 import kotlinx.coroutines.runBlocking
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.appearance_dark
-import livetextfinder.shared.generated.resources.finder_options_appearance
 import livetextfinder.shared.generated.resources.finder_options
+import livetextfinder.shared.generated.resources.finder_options_appearance
 import livetextfinder.shared.generated.resources.finder_options_help
 import livetextfinder.shared.generated.resources.help_title
 import livetextfinder.shared.generated.resources.inspection_lists
-import livetextfinder.shared.generated.resources.search_lists_heading
 import livetextfinder.shared.generated.resources.scanner_camera_access_needed
+import livetextfinder.shared.generated.resources.search_list_edit_accessibility
+import livetextfinder.shared.generated.resources.search_list_export_accessibility
+import livetextfinder.shared.generated.resources.search_list_import
+import livetextfinder.shared.generated.resources.search_list_name_label
+import livetextfinder.shared.generated.resources.search_list_transfer_cancel
+import livetextfinder.shared.generated.resources.search_lists_heading
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.junit.After
@@ -58,28 +65,60 @@ class AppScreenScreenshotTest {
     }
 
     @Test
-    fun listManagerOpen() = capture(
-        "list-manager-open",
-        click(Res.string.inspection_lists),
-        expect(Res.string.search_lists_heading),
+    fun listsSheet() = captureListsSheet("lists-sheet")
+
+    @Test
+    fun listsSheetEditor() = captureListsSheet(
+        "lists-sheet-editor",
+        click(Res.string.search_list_edit_accessibility, listOf("Invoices")),
+        expect(Res.string.search_list_name_label),
+        largeText = true,
     )
 
     @Test
-    fun listManagerShowsTransferActionsForSavedList() {
-        val session = inMemorySearchSessionController()
-        check(session.saveList(null, "Invoices", "invoice") == null)
-        session.selectList(null)
-        assertAppScreenshot(
-            "list-manager-transfer",
-            ScreenshotVariant.LIGHT,
-            steps = listOf(
-                click(Res.string.inspection_lists),
-                { root ->
-                    val export = nodes(root).single { it.hasText("Export Invoices") }
-                    check(!export.config.contains(SemanticsProperties.Disabled))
+    fun listsSheetTransferInProgress() = captureListsSheet(
+        "lists-sheet-transfer",
+        click(Res.string.search_list_import),
+        expect(Res.string.search_list_transfer_cancel),
+    )
+
+    private fun captureListsSheet(
+        state: String,
+        vararg actions: (SemanticsNode) -> Unit,
+        largeText: Boolean = false,
+    ) {
+        val variants = mutableListOf(ScreenshotVariant.LIGHT, ScreenshotVariant.DARK)
+        if (largeText) {
+            variants.add(ScreenshotVariant.LIGHT_FONT_130)
+        }
+        for (variant in variants) {
+            val session = inMemorySearchSessionController()
+            check(session.saveList(null, "Invoices", "invoice") == null)
+            session.selectList(null)
+            assertAppScreenshot(
+                state,
+                variant,
+                steps = listOf(
+                    click(Res.string.inspection_lists),
+                    expect(Res.string.search_lists_heading),
+                    { root ->
+                        val exportLabel = runBlocking {
+                            getString(Res.string.search_list_export_accessibility, "Invoices")
+                        }
+                        val export = nodes(root).single { it.hasText(exportLabel) }
+                        check(!export.config.contains(SemanticsProperties.Disabled))
+                    },
+                ) + actions,
+                onCaptured = { activity ->
+                    val shadow = shadowOf(activity)
+                    val request = shadow.peekNextStartedActivityForResult()
+                    if (request?.intent?.action == Intent.ACTION_OPEN_DOCUMENT) {
+                        shadow.receiveResult(request.intent, Activity.RESULT_CANCELED, null)
+                        drainMainLooper()
+                    }
                 },
-            ),
-        ) { App(session) }
+            ) { App(session) }
+        }
     }
 
     @Test

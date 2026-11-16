@@ -12,7 +12,6 @@ import com.artkachenko.livetextfinder.search.SearchPresentation
 import com.artkachenko.livetextfinder.search.SearchSessionState
 import com.artkachenko.livetextfinder.search.TextSearchResult
 import com.artkachenko.livetextfinder.ui.ContextMessage
-import com.artkachenko.livetextfinder.ui.StatusSummary
 import com.artkachenko.livetextfinder.ui.searchSessionErrorMessage
 import com.artkachenko.livetextfinder.ui.sourceStatusMessage
 import livetextfinder.shared.generated.resources.Res
@@ -46,11 +45,10 @@ internal fun FinderStatusRegion(
     highlights: Highlights,
     resultsAvailable: Boolean = true,
     areaSelected: Boolean,
-    shouldShowViews: Boolean,
-    liveStageBand: Boolean = false,
+    showSavedSearchMessages: Boolean,
     onRetrySavedData: () -> Unit,
     onRequestReset: () -> Unit,
-    floatingContent: (@Composable (String, @Composable () -> Unit) -> Unit)? = null,
+    floatingContent: @Composable (String, @Composable () -> Unit) -> Unit,
 ) {
     val source = resolveStatusSource(importedState.phase, freezeState.mode)
     val selectedContent = when (source) {
@@ -97,74 +95,73 @@ internal fun FinderStatusRegion(
             areaSelected,
         )
     }
-    val statusVisible = shouldShowViews || source == StatusSource.ImportProgress ||
-        source == StatusSource.ImportedImage
-
-    val messages: @Composable () -> Unit = {
+    val label = if (state.status == OcrStatus.PermissionRequired &&
+        source == StatusSource.LiveCamera
+    ) {
+        stringResource(Res.string.scanner_camera_access_needed)
+    } else {
+        statusMessage
+    }
+    floatingContent(label) {
         freezeState.error?.let { error ->
-            ContextMessage(message = error, isError = true, floating = floatingContent != null)
+            ContextMessage(message = error, isError = true, floating = true)
         }
-        when {
-            sessionState.recoveryRequired -> ContextMessage(
-                message = listOfNotNull(
-                    sessionState.error?.let { error -> searchSessionErrorMessage(error) }
-                        ?: stringResource(Res.string.status_recovery),
-                    stringResource(Res.string.status_reset_explanation),
-                ).joinToString("\n"),
-                actionLabel = stringResource(Res.string.status_reset_saved_data),
-                onAction = onRequestReset,
-                isError = true,
-                floating = floatingContent != null,
-            )
-            sessionState.error != null -> ContextMessage(
-                message = searchSessionErrorMessage(sessionState.error) + if (sessionState.saving) {
-                    " · ${stringResource(Res.string.status_saving)}"
-                } else {
-                    ""
-                },
-                actionLabel = stringResource(Res.string.status_retry),
-                onAction = onRetrySavedData,
-                isError = true,
-                floating = floatingContent != null,
-            )
-            !sessionState.loaded -> ContextMessage(
-                stringResource(Res.string.status_loading_searches),
-                floating = floatingContent != null,
+        if (showSavedSearchMessages) {
+            SavedSearchStatusMessages(
+                sessionState,
+                onRetrySavedData,
+                onRequestReset,
+                floating = true,
             )
         }
         if (importedState.phase == ImportedImagePhase.Error) {
             ContextMessage(
                 message = importedState.message ?: stringResource(Res.string.status_import_error),
                 isError = true,
-                floating = floatingContent != null,
+                floating = true,
             )
         }
-    }
-    if (floatingContent != null) {
-        val label = if (state.status == OcrStatus.PermissionRequired &&
-            source == StatusSource.LiveCamera
-        ) {
-            stringResource(Res.string.scanner_camera_access_needed)
-        } else {
-            statusMessage
+        if (source == StatusSource.LiveCamera && state.status == OcrStatus.Error) {
+            ContextMessage(message = statusMessage, isError = true, floating = true)
         }
-        floatingContent(label) {
-            messages()
-            if (source == StatusSource.LiveCamera && state.status == OcrStatus.Error) {
-                ContextMessage(message = statusMessage, isError = true, floating = true)
-            }
-        }
-    } else {
-        messages()
     }
-    if (floatingContent == null && statusVisible) {
-        StatusSummary(
-            message = statusMessage,
-            isError = source == StatusSource.LiveCamera && state.status == OcrStatus.Error,
-            stageBand = liveStageBand,
+}
+
+@Composable
+internal fun SavedSearchStatusMessages(
+    sessionState: SearchSessionState,
+    onRetrySavedData: () -> Unit,
+    onRequestReset: () -> Unit,
+    floating: Boolean = false,
+) {
+    when {
+        sessionState.recoveryRequired -> ContextMessage(
+            message = listOfNotNull(
+                sessionState.error?.let { error -> searchSessionErrorMessage(error) }
+                    ?: stringResource(Res.string.status_recovery),
+                stringResource(Res.string.status_reset_explanation),
+            ).joinToString("\n"),
+            actionLabel = stringResource(Res.string.status_reset_saved_data),
+            onAction = onRequestReset,
+            isError = true,
+            floating = floating,
+        )
+        sessionState.error != null -> ContextMessage(
+            message = searchSessionErrorMessage(sessionState.error) + if (sessionState.saving) {
+                " · ${stringResource(Res.string.status_saving)}"
+            } else {
+                ""
+            },
+            actionLabel = stringResource(Res.string.status_retry),
+            onAction = onRetrySavedData,
+            isError = true,
+            floating = floating,
+        )
+        !sessionState.loaded -> ContextMessage(
+            stringResource(Res.string.status_loading_searches),
+            floating = floating,
         )
     }
-
 }
 
 @Composable

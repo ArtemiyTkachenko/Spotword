@@ -68,6 +68,10 @@
     <string name="search_list_terms_blank_warning">Blank lines cannot be saved. Remove them to continue.</string>
     <string name="search_list_save">Save list</string>
     <string name="search_list_cancel">Cancel</string>
+    <string name="search_list_discard_title">Discard list changes?</string>
+    <string name="search_list_discard_message">Your unsaved changes to this list will be lost.</string>
+    <string name="search_list_discard_confirm">Discard changes</string>
+    <string name="search_list_discard_keep_editing">Keep editing</string>
     <string name="finder_options">Options</string>
     <string name="finder_find_text">Find text</string>
     <string name="inspection_done">Done</string>
@@ -83,10 +87,7 @@
     <string name="finder_options_search_group">Search and matching</string>
     <string name="finder_options_camera_group">Camera and images</string>
     <string name="finder_options_transfer_group">Import and export</string>
-    <string name="finder_match_substring">Contains text</string>
     <string name="finder_match_whole_words">Whole words</string>
-    <string name="finder_match_help">Contains text finds the entered text anywhere. Whole words match cat, but not catalog.</string>
-    <string name="search_context_manual">Manual search</string>
     <string name="search_context_list_identity">Search list · %1$s</string>
     <string name="search_context_manual_inactive">Inactive while a list is selected. Typing switches to manual search.</string>
     <string name="search_context_terms">Terms</string>

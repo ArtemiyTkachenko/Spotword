@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -17,6 +18,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.artkachenko.livetextfinder.search.SavedSearchList
 import com.artkachenko.livetextfinder.search.SearchListEditorState
 import com.artkachenko.livetextfinder.search.SearchListTransferState
@@ -54,6 +56,7 @@ internal fun FinderSearchLists(
     transferState: SearchListTransferState = SearchListTransferState(),
     onImportList: () -> Unit = { Unit },
     onExportList: (SavedSearchList) -> Unit = { Unit },
+    showHeading: Boolean = true,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(FinderSpacing.large),
@@ -65,11 +68,13 @@ internal fun FinderSearchLists(
             verticalArrangement = Arrangement.spacedBy(FinderSpacing.small),
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(Res.string.search_lists_heading),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.titleMedium,
-            )
+            if (showHeading) {
+                Text(
+                    text = stringResource(Res.string.search_lists_heading),
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
             if (transferState.supported) {
                 FinderSecondaryAction(
                     label = stringResource(Res.string.search_list_import),
@@ -158,6 +163,7 @@ private fun SearchListRow(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 48.dp)
                         .selectable(
                             selected = selected,
                             role = Role.RadioButton,
