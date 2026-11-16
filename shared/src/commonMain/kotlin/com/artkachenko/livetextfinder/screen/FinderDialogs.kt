@@ -29,7 +29,6 @@ import com.artkachenko.livetextfinder.ui.UsageHelpDialog
 import com.artkachenko.livetextfinder.ui.appearanceLabel
 import com.artkachenko.livetextfinder.ui.localizedHighlightColorName
 import livetextfinder.shared.generated.resources.Res
-import livetextfinder.shared.generated.resources.finder_options_highlight
 import livetextfinder.shared.generated.resources.saved_search_reset_confirm
 import livetextfinder.shared.generated.resources.saved_search_reset_message
 import livetextfinder.shared.generated.resources.saved_search_reset_title
@@ -181,10 +180,8 @@ internal fun FinderDialogs(
     }
     if (dialogs.optionsOpen) {
         FinderOptionsSheet(
-            highlightLabel = stringResource(
-                Res.string.finder_options_highlight,
-                localizedHighlightColorName(sessionState.persisted.highlightColor),
-            ),
+            highlightName = localizedHighlightColorName(sessionState.persisted.highlightColor),
+            highlightColor = sessionState.persisted.highlightColor.composeColor,
             highlightEnabled = savedSearchEditable,
             appearanceLabel = appearanceLabel(appearance),
             onAppearance = {

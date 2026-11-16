@@ -1,9 +1,7 @@
 package com.artkachenko.livetextfinder.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -135,18 +133,7 @@ internal fun SearchTermResultsDialog(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                         ) {
-                            Box(
-                                modifier = Modifier.size(20.dp)
-                                    .background(
-                                        term.color.composeColor,
-                                        MaterialTheme.shapes.extraSmall,
-                                    )
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline,
-                                        MaterialTheme.shapes.extraSmall,
-                                    ),
-                            )
+                            FinderColorSwatch(term.color.composeColor, size = 20.dp)
                             Text(
                                 term.label,
                                 modifier = Modifier.weight(1f),
@@ -189,7 +176,7 @@ internal fun SearchTermResultsDialog(
         },
         dismissButton = if (onOccurrences != null) {
             {
-                FinderSecondaryAction(
+                FinderDialogAction(
                     label = stringResource(Res.string.inspection_results_occurrences),
                     onClick = onOccurrences,
                 )
@@ -198,7 +185,7 @@ internal fun SearchTermResultsDialog(
             null
         },
         confirmButton = {
-            FinderSecondaryAction(
+            FinderDialogAction(
                 label = stringResource(Res.string.search_results_done),
                 onClick = onDismiss,
             )

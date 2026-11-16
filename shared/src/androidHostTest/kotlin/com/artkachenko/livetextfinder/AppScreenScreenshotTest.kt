@@ -11,18 +11,18 @@ import com.artkachenko.livetextfinder.search.inMemorySearchSessionController
 import kotlinx.coroutines.runBlocking
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.appearance_dark
+import livetextfinder.shared.generated.resources.appearance_title
 import livetextfinder.shared.generated.resources.finder_options
-import livetextfinder.shared.generated.resources.finder_options_appearance
 import livetextfinder.shared.generated.resources.finder_options_help
 import livetextfinder.shared.generated.resources.help_title
 import livetextfinder.shared.generated.resources.inspection_lists
 import livetextfinder.shared.generated.resources.scanner_camera_access_needed
-import livetextfinder.shared.generated.resources.search_list_edit_accessibility
-import livetextfinder.shared.generated.resources.search_list_export_accessibility
 import livetextfinder.shared.generated.resources.search_list_import
+import livetextfinder.shared.generated.resources.search_list_more_actions
 import livetextfinder.shared.generated.resources.search_list_name_label
 import livetextfinder.shared.generated.resources.search_list_transfer_cancel
 import livetextfinder.shared.generated.resources.search_lists_heading
+import livetextfinder.shared.generated.resources.search_lists_new
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.junit.After
@@ -70,7 +70,7 @@ class AppScreenScreenshotTest {
     @Test
     fun listsSheetEditor() = captureListsSheet(
         "lists-sheet-editor",
-        click(Res.string.search_list_edit_accessibility, listOf("Invoices")),
+        click(Res.string.search_lists_new),
         expect(Res.string.search_list_name_label),
         largeText = true,
     )
@@ -102,11 +102,11 @@ class AppScreenScreenshotTest {
                     click(Res.string.inspection_lists),
                     expect(Res.string.search_lists_heading),
                     { root ->
-                        val exportLabel = runBlocking {
-                            getString(Res.string.search_list_export_accessibility, "Invoices")
+                        val moreLabel = runBlocking {
+                            getString(Res.string.search_list_more_actions, "Invoices")
                         }
-                        val export = nodes(root).single { it.hasText(exportLabel) }
-                        check(!export.config.contains(SemanticsProperties.Disabled))
+                        val more = nodes(root).single { it.hasText(moreLabel) }
+                        check(!more.config.contains(SemanticsProperties.Disabled))
                     },
                 ) + actions,
                 onCaptured = { activity ->
@@ -142,10 +142,10 @@ class AppScreenScreenshotTest {
         capture(
             "appearance-dark",
             click(Res.string.finder_options),
-            click(Res.string.finder_options_appearance, listOf("System")),
+            click(Res.string.appearance_title),
             click(Res.string.appearance_dark),
             click(Res.string.finder_options),
-            click(Res.string.finder_options_appearance, listOf("Dark")),
+            click(Res.string.appearance_title),
             { root ->
                 val dark = nodes(root).single { it.hasText("Dark") }
                 check(dark.config.getOrNull(SemanticsProperties.Selected) == true)

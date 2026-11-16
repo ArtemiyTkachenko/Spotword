@@ -3,7 +3,6 @@ package com.artkachenko.livetextfinder.lists
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -19,21 +18,15 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.artkachenko.livetextfinder.search.SearchListTransferOwner
 import com.artkachenko.livetextfinder.search.SearchSessionState
 import com.artkachenko.livetextfinder.ui.ContextMessage
-import com.artkachenko.livetextfinder.ui.FinderPrimaryAction
+import com.artkachenko.livetextfinder.ui.FinderDialogAction
 import com.artkachenko.livetextfinder.ui.FinderSearchLists
-import com.artkachenko.livetextfinder.ui.FinderSecondaryAction
+import com.artkachenko.livetextfinder.ui.FinderSheetTitle
 import com.artkachenko.livetextfinder.ui.FinderSpacing
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.search_list_discard_confirm
@@ -41,7 +34,6 @@ import livetextfinder.shared.generated.resources.search_list_discard_keep_editin
 import livetextfinder.shared.generated.resources.search_list_discard_message
 import livetextfinder.shared.generated.resources.search_list_discard_title
 import livetextfinder.shared.generated.resources.search_list_transfer_cancel
-import livetextfinder.shared.generated.resources.search_lists_close
 import livetextfinder.shared.generated.resources.search_lists_heading
 import org.jetbrains.compose.resources.stringResource
 
@@ -69,7 +61,6 @@ internal fun FinderListsSheet(
         skipPartiallyExpanded = true,
         confirmValueChange = confirmTransition,
     )
-    val closeFocusRequester = remember { FocusRequester() }
     val transferState = transferOwner.state.value
     val persisted = sessionState.persisted
     ModalBottomSheet(
@@ -84,23 +75,10 @@ internal fun FinderListsSheet(
                     .heightIn(max = sheetContentHeight)
                     .padding(bottom = FinderSpacing.large),
             ) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = FinderSpacing.large),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    itemVerticalAlignment = Alignment.CenterVertically,
-                ) {
-                    LaunchedEffect(Unit) { closeFocusRequester.requestFocus() }
-                    Text(
-                        stringResource(Res.string.search_lists_heading),
-                        modifier = Modifier.semantics { heading() },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    FinderSecondaryAction(
-                        label = stringResource(Res.string.search_lists_close),
-                        onClick = searchEditing::requestDismiss,
-                        modifier = Modifier.focusRequester(closeFocusRequester),
-                    )
-                }
+                FinderSheetTitle(
+                    text = stringResource(Res.string.search_lists_heading),
+                    modifier = Modifier.padding(horizontal = FinderSpacing.large),
+                )
                 Column(
                     modifier = Modifier.weight(1f, fill = false)
                         .fillMaxWidth()
@@ -139,7 +117,6 @@ internal fun FinderListsSheet(
                         transferState = transferState,
                         onImportList = transferOwner::importList,
                         onExportList = transferOwner::exportList,
-                        showHeading = false,
                     )
                 }
                 SnackbarHost(snackbarHostState)
@@ -158,15 +135,14 @@ private fun DiscardListChangesDialog(searchEditing: SavedSearchEditingState) {
         title = { Text(stringResource(Res.string.search_list_discard_title)) },
         text = { Text(stringResource(Res.string.search_list_discard_message)) },
         confirmButton = {
-            FinderPrimaryAction(
+            FinderDialogAction(
                 label = stringResource(Res.string.search_list_discard_confirm),
-                enabled = true,
                 destructive = true,
                 onClick = searchEditing::confirmDiscard,
             )
         },
         dismissButton = {
-            FinderSecondaryAction(
+            FinderDialogAction(
                 label = stringResource(Res.string.search_list_discard_keep_editing),
                 onClick = searchEditing::keepEditing,
             )

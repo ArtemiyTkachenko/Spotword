@@ -183,7 +183,7 @@ class LiveTextFinderThemeTest {
             }
         }
         val density = checkNotNull(composeView).resources.displayMetrics.density
-        assertTrue(actionSize.value.height / density >= 52f)
+        assertTrue(actionSize.value.height / density >= 48f)
         assertTrue(actionSize.value.width / density >= 48f)
         val action = nodeWithText(semanticsNodes(), "Freeze frame", clickable = true)
         assertTrue(checkNotNull(action.config.getOrNull(SemanticsActions.OnClick)?.action)())
@@ -291,7 +291,7 @@ class LiveTextFinderThemeTest {
 
         val searchListsButton = nodeWithText(nodes, "Close lists", clickable = true)
         val contextText = nodeWithText(nodes, "Manual search")
-        val optionsButton = nodeWithText(nodes, "Options", clickable = true)
+        val optionsButton = nodeWithText(nodes, "Settings", clickable = true)
         val composeView = checkNotNull(this.composeView)
         val currentQueryNode = nodes.single {
             it.config.getOrNull(SemanticsProperties.EditableText)?.text == "updated invoice"
@@ -457,7 +457,7 @@ class LiveTextFinderThemeTest {
             val composeView = checkNotNull(composeView)
             measureCurrentComposition()
             if (fixture.scrollable) {
-                val topOptions = nodeWithText(semanticsNodes(), "Options", clickable = true)
+                val topOptions = nodeWithText(semanticsNodes(), "Settings", clickable = true)
                 val topOptionsBounds = topOptions.unclippedBoundsInRoot()
                 assertTrue(topOptionsBounds.top >= 0f)
                 assertTrue(topOptionsBounds.bottom <= composeView.height)
@@ -483,7 +483,7 @@ class LiveTextFinderThemeTest {
                 nodeWithText(renderedNodes, "Lists", clickable = true)
                     .unclippedBoundsInRoot(),
                 renderedContext.unclippedBoundsInRoot(),
-                nodeWithText(renderedNodes, "Options", clickable = true)
+                nodeWithText(renderedNodes, "Settings", clickable = true)
                     .unclippedBoundsInRoot(),
                 nodeWithText(renderedNodes, "Freeze frame", clickable = true)
                     .unclippedBoundsInRoot(),

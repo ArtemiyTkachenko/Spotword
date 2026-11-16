@@ -110,23 +110,29 @@ class FinderSearchListsTest {
         var nodes = semanticsNodes()
         assertTrue(nodes.any { it.textValues().contains("1 term") })
         assertTrue(nodes.any { it.textValues().contains("2 terms") })
-        assertTrue(nodes.any { it.textValues().contains("Selected") })
+        // The radio state alone marks the active list, and per-list actions live in a menu.
+        assertFalse(nodes.any { it.textValues().contains("Selected") })
+        listOf("Edit", "Export", "Delete").forEach { action ->
+            assertFalse(nodes.any { it.textValues().contains(action) }, action)
+        }
         val selectedRow = nodeWithDescription(nodes, "Select Parts")
         assertEquals(true, selectedRow.config.getOrNull(SemanticsProperties.Selected))
+        assertEquals(
+            false,
+            nodeWithDescription(nodes, "Select Monthly review")
+                .config.getOrNull(SemanticsProperties.Selected),
+        )
         assertTouchBounds(selectedRow)
-        assertMeasuredSize(selectedRow, minimumHeightDp = 48f)
-        val editParts = nodeWithDescription(nodes, "Edit Parts")
-        val deleteParts = nodeWithDescription(nodes, "Delete Parts")
-        assertTouchBounds(editParts)
-        assertTouchBounds(deleteParts)
-        assertMeasuredSize(editParts, minimumHeightDp = 48f)
-        assertMeasuredSize(deleteParts, minimumHeightDp = 48f)
-        assertFalse(intersects(selectedRow.touchBoundsInRoot, editParts.touchBoundsInRoot))
-        assertFalse(intersects(selectedRow.touchBoundsInRoot, deleteParts.touchBoundsInRoot))
-        assertFalse(intersects(editParts.touchBoundsInRoot, deleteParts.touchBoundsInRoot))
+        assertMeasuredSize(selectedRow, minimumHeightDp = 56f)
+        val moreParts = nodeWithDescription(nodes, "More actions for Parts")
+        val moreReview = nodeWithDescription(nodes, "More actions for Monthly review")
+        assertTouchBounds(moreParts)
+        assertTouchBounds(moreReview)
+        assertFalse(intersects(selectedRow.touchBoundsInRoot, moreParts.touchBoundsInRoot))
+        assertFalse(intersects(moreParts.touchBoundsInRoot, moreReview.touchBoundsInRoot))
         val newList = nodeWithText(nodes, "New list")
         assertTouchBounds(newList)
-        assertMeasuredSize(newList, minimumHeightDp = 52f)
+        assertMeasuredSize(newList, minimumHeightDp = 40f)
         assertRendered("lists-light-populated.png")
 
         click(selectedRow)
@@ -136,19 +142,67 @@ class FinderSearchListsTest {
         assertEquals("two", selected.value)
         assertEquals(listOf("two"), selectCalls)
         assertEquals(1, invalidations)
-        nodes = semanticsNodes()
-        click(nodeWithDescription(nodes, "Edit Parts"))
-        assertEquals(listOf(first), editCalls)
-        assertEquals(listOf("two"), selectCalls)
-        assertEquals("two", selected.value)
-        click(nodeWithDescription(semanticsNodes(), "Delete Monthly review"))
-        assertEquals(listOf(second), deleteCalls)
-        assertEquals(listOf("two"), selectCalls)
-        assertEquals("two", selected.value)
+        assertTrue(editCalls.isEmpty())
+        assertTrue(deleteCalls.isEmpty())
+    }
+
+    // The menu's popup window does not settle in this host fixture, so its items are mounted
+    // directly; that the three-dot button opens them is not covered here.
+    @Test
+    fun listMenuItemsRouteEachActionAndMarkDeleteAsDestructive() {
+        val calls = mutableListOf<String>()
+        val exportEnabled = mutableStateOf(true)
+        mount(widthDp = 240, heightDp = 240) {
+            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
+                Surface(Modifier.fillMaxSize()) {
+                    Column {
+                        SearchListMenuItems(
+                            onEdit = { calls += "edit" },
+                            onDelete = { calls += "delete" },
+                            onExport = { calls += "export" },
+                            exportEnabled = exportEnabled.value,
+                        )
+                    }
+                }
+            }
+        }
+
+        var items = semanticsNodes().filter { it.textValues().isNotEmpty() }
+        assertEquals(listOf("Edit", "Export", "Delete"), items.flatMap { it.textValues() })
+        items.forEach(::assertTouchBounds)
+        listOf("Edit", "Export", "Delete").forEach { label -> click(nodeWithText(items, label)) }
+        assertEquals(listOf("edit", "export", "delete"), calls)
+
+        exportEnabled.value = false
+        measureCurrentComposition()
+        items = semanticsNodes().filter { it.textValues().isNotEmpty() }
+        assertTrue(nodeWithText(items, "Export").config.contains(SemanticsProperties.Disabled))
+        assertFalse(nodeWithText(items, "Edit").config.contains(SemanticsProperties.Disabled))
+        assertFalse(nodeWithText(items, "Delete").config.contains(SemanticsProperties.Disabled))
     }
 
     @Test
-    fun listManagerExportsInactiveRowWithoutSelectingItAndKeepsImportIndependent() {
+    fun listMenuItemsOmitExportWhereTransferIsUnsupported() {
+        mount(widthDp = 240, heightDp = 240) {
+            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
+                Surface(Modifier.fillMaxSize()) {
+                    Column {
+                        SearchListMenuItems(
+                            onEdit = ::ignoreAction,
+                            onDelete = ::ignoreAction,
+                            onExport = null,
+                            exportEnabled = false,
+                        )
+                    }
+                }
+            }
+        }
+
+        assertEquals(listOf("Edit", "Delete"), semanticsNodes().flatMap { it.textValues() })
+    }
+
+    @Test
+    fun listManagerKeepsImportIndependentOfTheActiveListAndDisablesItWithTransfer() {
         val active = SavedSearchList("active", "Parts", listOf("bolt"))
         val inactive = SavedSearchList("inactive", "Invoices", listOf("invoice"))
         val transfers = mutableStateOf(
@@ -181,26 +235,22 @@ class FinderSearchListsTest {
         }
 
         val nodes = semanticsNodes()
-        val export = nodeWithDescription(nodes, "Export Invoices")
-        val importAction = nodeWithText(nodes, "Import search list")
-        assertTouchBounds(export)
+        val importAction = nodeWithDescription(nodes, "Import search list")
+        assertTrue(importAction.textValues().contains("Import"))
         assertTouchBounds(importAction)
-        click(export)
+        assertTouchBounds(nodeWithDescription(nodes, "More actions for Invoices"))
         click(importAction)
-        assertEquals(listOf(inactive), exported)
+        assertTrue(exported.isEmpty())
         assertEquals(1, imports)
         val activeRow = nodeWithDescription(semanticsNodes(), "Select Parts")
         assertTrue(activeRow.config[SemanticsProperties.Selected])
 
         transfers.value = transfers.value.copy(importEnabled = false, exportEnabled = false)
         measureCurrentComposition()
-        val disabled = semanticsNodes()
-        assertTrue(nodeWithDescription(disabled, "Export Invoices").config.contains(
-            SemanticsProperties.Disabled,
-        ))
-        assertTrue(nodeWithText(disabled, "Import search list").config.contains(
-            SemanticsProperties.Disabled,
-        ))
+        assertTrue(
+            nodeWithDescription(semanticsNodes(), "Import search list")
+                .config.contains(SemanticsProperties.Disabled),
+        )
     }
 
     @Test
@@ -235,7 +285,7 @@ class FinderSearchListsTest {
         )
         val newList = nodeWithText(nodes, "New list")
         assertTouchBounds(newList)
-        assertMeasuredSize(newList, minimumHeightDp = 52f)
+        assertMeasuredSize(newList, minimumHeightDp = 40f)
         assertRendered("lists-light-empty.png")
         click(newList)
         assertTrue(editor.value.isOpen)
@@ -288,7 +338,7 @@ class FinderSearchListsTest {
         val newList = nodeWithText(nodes, "New list")
         assertTrue(newList.config.contains(SemanticsProperties.Disabled))
         assertTouchBounds(newList)
-        assertMeasuredSize(newList, minimumHeightDp = 48f)
+        assertMeasuredSize(newList, minimumHeightDp = 40f)
         assertTrue(nodes.any { it.textValues().contains("Edit list") })
         assertTrue(nodes.any { it.textValues().contains("List name") })
         assertTrue(nodes.any { it.textValues().contains("Terms or phrases · one per line") })
@@ -316,14 +366,14 @@ class FinderSearchListsTest {
         val save = nodeWithText(visibleNodes, "Save list")
         assertTrue(save.config.contains(SemanticsProperties.Disabled))
         assertTouchBounds(save)
-        assertMeasuredSize(save, minimumHeightDp = 52f)
+        assertMeasuredSize(save, minimumHeightDp = 40f)
         val cancel = nodeWithText(visibleNodes, "Cancel")
         assertFalse(cancel.config.contains(SemanticsProperties.Disabled))
         assertTouchBounds(cancel)
         assertWithinViewport(save)
         assertWithinViewport(cancel)
         assertFalse(intersects(save.touchBoundsInRoot, cancel.touchBoundsInRoot))
-        assertMeasuredSize(cancel, minimumHeightDp = 48f)
+        assertMeasuredSize(cancel, minimumHeightDp = 40f)
         assertRendered("lists-dark-editor-error.png")
         click(cancel)
         assertEquals(1, cancelCount)
@@ -394,15 +444,15 @@ class FinderSearchListsTest {
         nodes = semanticsNodes()
         val save = nodeWithText(nodes, "Save list")
         val cancel = nodeWithText(nodes, "Cancel")
-        assertMeasuredSize(save, minimumHeightDp = 52f)
-        assertMeasuredSize(cancel, minimumHeightDp = 48f)
+        assertMeasuredSize(save, minimumHeightDp = 40f)
+        assertMeasuredSize(cancel, minimumHeightDp = 40f)
         assertWithinViewport(save)
         assertWithinViewport(cancel)
         assertRendered("lists-dark-short-viewport-bottom.png")
     }
 
     @Test
-    fun mainControlsSelectedListAndEditorShareTheThirtyTwoDpContentInset() {
+    fun mainControlsAndEditorShareTheThirtyTwoDpContentInset() {
         val list = SavedSearchList("shopping", "Shopping list", listOf("Protein"))
         mount(widthDp = 360, heightDp = 900) {
             LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
@@ -449,16 +499,12 @@ class FinderSearchListsTest {
         val query = nodes.single {
             it.config.getOrNull(SemanticsProperties.EditableText)?.text == "invoice"
         }
-        val selectedName = nodes.single {
-            it.config.getOrNull(SemanticsProperties.Text)?.singleOrNull()?.text == "Shopping list"
-        }
         val editorName = nodes.single {
             it.config.getOrNull(SemanticsProperties.EditableText)?.text == "Shopping list"
         }
         val density = checkNotNull(composeView).resources.displayMetrics.density
         val sharedInsetDp = 32f
         assertEquals(sharedInsetDp, query.positionInRoot.x / density, 0.5f)
-        assertEquals(sharedInsetDp, selectedName.positionInRoot.x / density, 0.5f)
         assertEquals(sharedInsetDp, editorName.positionInRoot.x / density, 0.5f)
         assertRendered("combined-light-shared-content-inset.png")
     }
@@ -521,8 +567,8 @@ class FinderSearchListsTest {
         val cancel = nodeWithText(nodes, "Cancel")
         assertTouchBounds(save)
         assertTouchBounds(cancel)
-        assertMeasuredSize(save, minimumHeightDp = 52f)
-        assertMeasuredSize(cancel, minimumHeightDp = 48f)
+        assertMeasuredSize(save, minimumHeightDp = 40f)
+        assertMeasuredSize(cancel, minimumHeightDp = 40f)
         assertWithinViewport(save)
         assertWithinViewport(cancel)
         assertRendered("combined-landscape-many-lists-bottom.png")

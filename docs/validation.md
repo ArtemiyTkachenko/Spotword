@@ -1120,3 +1120,36 @@ baselines (51 element, 13 region, 12 screen); no baseline was re-recorded, inclu
 `status-summary` ones. `:shared:compileKotlinIosSimulatorArm64` and
 `:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
 device.
+
+## Shared sheet and dialog styling — 2026-11-16
+
+Sheets and dialogs were restyled from mockups the owner approved, through four shared pieces
+in `ui/`: `FinderActions.kt` (filled, outlined, text and dialog buttons as Material 40dp pills
+inside a 48dp touch target, with the Material leading-icon paddings), and
+`FinderSheetComponents.kt` (`FinderSheetTitle`, `FinderRowGroup`, `FinderSettingsRow` with its
+icon in a circular container, and the round `FinderColorSwatch`).
+
+- Highlight colour dialog: one radio column of five rows with round swatches, the explanation
+  shortened and moved below the list, and text buttons.
+- Settings sheet (was "Options"): one grouped container; each row shows an icon, a title and
+  the current value, and the highlight row ends with a swatch.
+- Search lists sheet: no "Close lists" action; "New list" (filled) and "Import" (outlined)
+  share one row; each list is a radio row with a three-dot menu holding Edit, Export and
+  Delete, where Delete uses the error colour and keeps its confirmation.
+- All alert dialogs use text buttons; the remaining square swatches became round.
+- Nine icons were added as vector drawables (`finder_*.xml`) from the Material Icons outlined
+  set, and 34 string resources without a caller were removed.
+
+Tests were updated to the new contract (visual button height 40dp, touch target 48dp) and to
+the menu. `DropdownMenu` popups do not settle in the Robolectric fixture (the looper never
+idles once one is open), so `FinderSearchListsTest` mounts `SearchListMenuItems` directly:
+routing, the disabled Export item and the missing Export item are covered, and the three-dot
+button's label and touch target are covered, but that tapping it opens the menu is **not**
+covered by any host test and no baseline shows the open menu.
+
+A clean uncached host run passed **473 tests in 67 suites with 0 failures** against 79
+baselines (51 element, 11 region, 17 screen). Twenty-seven baselines were re-recorded; the
+lists sheet, lists sheet with editor, settings sheet, highlight dialog, matches dialog and
+scan-area edit bar were reviewed by eye. `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
+device.

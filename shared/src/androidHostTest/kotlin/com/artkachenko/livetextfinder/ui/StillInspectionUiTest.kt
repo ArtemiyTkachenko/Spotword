@@ -247,7 +247,7 @@ class StillInspectionUiTest {
             assertTrue(initial.bottom <= search.top)
             assertTrue(search.bottom <= actionBar.top)
             assertTrue(actionBar.bottom <= 800f)
-            listOf("Zoom out", "Zoom in", "Previous", "Next", "Options").forEach { label ->
+            listOf("Zoom out", "Zoom in", "Previous", "Next", "Settings").forEach { label ->
                 val bounds = describedNode(label).boundsInRoot
                 assertTrue(bounds.width >= 48f && bounds.height >= 48f, label)
             }
@@ -875,7 +875,7 @@ class StillInspectionUiTest {
         assertNotNull(disabledShow.config.getOrNull(SemanticsProperties.Disabled))
         assertDialogActionSize("Copy matched text", 48f)
         assertDialogActionSize("Copy line", 48f)
-        assertDialogActionSize("Show on image", 52f)
+        assertDialogActionSize("Show on image", 48f)
         assertDialogActionSize("Cancel", 48f)
         assertTrue(
             nodes(dialogRoot).any { node -> nodeText(node) == "50 matches" },
@@ -926,7 +926,7 @@ class StillInspectionUiTest {
         measureCurrentComposition()
         assertDialogActionSize("Copy matched text", 48f)
         assertDialogActionSize("Copy line", 48f)
-        assertDialogActionSize("Show on image", 52f)
+        assertDialogActionSize("Show on image", 48f)
         assertDialogActionSize("Cancel", 48f)
         saveDialog("still-matches-dialog-dark-large-text.png")
         assertTrue(

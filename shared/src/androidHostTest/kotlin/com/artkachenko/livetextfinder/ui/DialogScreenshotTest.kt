@@ -17,7 +17,6 @@ import com.artkachenko.livetextfinder.search.SearchTermSummary
 import com.artkachenko.livetextfinder.search.StillMatchRow
 import com.artkachenko.livetextfinder.search.TextOccurrence
 import livetextfinder.shared.generated.resources.Res
-import livetextfinder.shared.generated.resources.finder_options_highlight
 import livetextfinder.shared.generated.resources.highlight_color_custom
 import livetextfinder.shared.generated.resources.highlight_color_yellow
 import livetextfinder.shared.generated.resources.search_list_delete
@@ -157,10 +156,8 @@ class DialogScreenshotTest {
     fun finderOptions() {
         assertDialogScreenshot("finder-options-sheet", "live-expanded", ScreenshotVariant.LIGHT) {
             FinderOptionsSheet(
-                highlightLabel = stringResource(
-                    Res.string.finder_options_highlight,
-                    stringResource(Res.string.highlight_color_yellow),
-                ),
+                highlightName = stringResource(Res.string.highlight_color_yellow),
+                highlightColor = HighlightColor.Yellow.composeColor,
                 highlightEnabled = true,
                 appearanceLabel = appearanceLabel(AppAppearance.System),
                 onAppearance = ::ignore,

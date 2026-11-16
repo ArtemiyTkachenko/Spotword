@@ -404,7 +404,7 @@ class LiveSearchAreaDialogTest {
                 action.positionInRoot.y + action.size.height <= (viewRoot as View).height,
             )
         }
-        assertTrue(actions.first().size.height / density >= 52f)
+        assertTrue(actions.first().size.height / density >= 48f)
         actions.forEachIndexed { index, action ->
             actions.drop(index + 1).forEach { other ->
                 assertTrue(

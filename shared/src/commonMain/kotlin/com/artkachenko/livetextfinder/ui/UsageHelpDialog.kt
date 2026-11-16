@@ -80,9 +80,8 @@ internal fun UsageHelpDialog(onDismissRequest: () -> Unit) {
             }
         },
         confirmButton = {
-            FinderPrimaryAction(
+            FinderDialogAction(
                 label = stringResource(Res.string.help_done),
-                enabled = true,
                 onClick = onDismissRequest,
             )
         },

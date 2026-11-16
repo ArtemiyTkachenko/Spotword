@@ -1,7 +1,5 @@
 package com.artkachenko.livetextfinder.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -40,9 +37,9 @@ import livetextfinder.shared.generated.resources.highlight_color_custom_selected
 import livetextfinder.shared.generated.resources.highlight_color_green
 import livetextfinder.shared.generated.resources.highlight_color_preview
 import livetextfinder.shared.generated.resources.highlight_color_red
-import livetextfinder.shared.generated.resources.highlight_color_selected
 import org.jetbrains.compose.resources.stringResource
 
+/** A custom colour as the last option of the highlight colour radio group. */
 @Composable
 internal fun CustomColorRow(
     color: HighlightColor,
@@ -50,12 +47,30 @@ internal fun CustomColorRow(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val label = if (selected) {
-        stringResource(Res.string.highlight_color_custom_selected)
-    } else {
-        stringResource(Res.string.highlight_color_custom)
-    }
-    val swatchShape = MaterialTheme.shapes.extraSmall
+    HighlightColorOption(
+        label = stringResource(Res.string.highlight_color_custom),
+        accessibilityLabel = if (selected) {
+            stringResource(Res.string.highlight_color_custom_selected)
+        } else {
+            stringResource(Res.string.highlight_color_custom)
+        },
+        color = color,
+        selected = selected,
+        enabled = enabled,
+        onClick = onClick,
+    )
+}
+
+/** One radio row of the highlight colour group: radio button, round swatch and name. */
+@Composable
+internal fun HighlightColorOption(
+    label: String,
+    accessibilityLabel: String,
+    color: HighlightColor,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth()
             .heightIn(min = 48.dp)
@@ -65,26 +80,13 @@ internal fun CustomColorRow(
                 role = Role.RadioButton,
                 onClick = onClick,
             )
-            .semantics { contentDescription = label }
-            .padding(horizontal = FinderSpacing.small),
-        horizontalArrangement = Arrangement.spacedBy(FinderSpacing.small),
+            .semantics { contentDescription = accessibilityLabel },
+        horizontalArrangement = Arrangement.spacedBy(FinderSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null, enabled = enabled)
-        Box(
-            modifier = Modifier.size(24.dp)
-                .background(color.composeColor, swatchShape)
-                .border(1.dp, MaterialTheme.colorScheme.outline, swatchShape),
-        )
-        Column {
-            Text(stringResource(Res.string.highlight_color_custom))
-            if (selected) {
-                Text(
-                    stringResource(Res.string.highlight_color_selected),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
+        FinderColorSwatch(color.composeColor)
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -120,11 +122,7 @@ internal fun CustomColorEditor(
             horizontalArrangement = Arrangement.spacedBy(FinderSpacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.size(36.dp)
-                    .background(color.composeColor, MaterialTheme.shapes.small)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small),
-            )
+            FinderColorSwatch(color.composeColor, size = 36.dp)
             Text(color.hexRgb, style = MaterialTheme.typography.titleMedium)
         }
         RgbSlider(

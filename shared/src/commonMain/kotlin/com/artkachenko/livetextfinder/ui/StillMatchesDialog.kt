@@ -1,9 +1,7 @@
 package com.artkachenko.livetextfinder.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -182,15 +180,7 @@ private fun StillMatchRowItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
-                Box(
-                    modifier = Modifier.size(16.dp)
-                        .background(row.termColor.composeColor, MaterialTheme.shapes.extraSmall)
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.outline,
-                            MaterialTheme.shapes.extraSmall,
-                        ),
-                )
+                FinderColorSwatch(row.termColor.composeColor, size = 16.dp)
                 Text(
                     text = "${row.termLabel} · ${row.lineContext}",
                     style = MaterialTheme.typography.bodySmall,

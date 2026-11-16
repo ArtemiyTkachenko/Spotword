@@ -250,7 +250,7 @@ class StatusFeedbackTest {
         assertTouchBounds(retry)
         val density = checkNotNull(composeView).resources.displayMetrics.density
         assertTrue(retry.size.width / density >= 48f)
-        assertTrue(retry.size.height / density >= 52f)
+        assertTrue(retry.size.height / density >= 48f)
         assertRendered("camera-feedback-retry-dark-large-text.png")
         click(retry)
         assertEquals(2, retryCount)
@@ -457,7 +457,8 @@ class StatusFeedbackTest {
                 }
                 if (optionsOpen.value) {
                     FinderOptionsSheet(
-                        highlightLabel = "Highlight color: Yellow",
+                        highlightName = "Yellow",
+                        highlightColor = HighlightColor.Yellow.composeColor,
                         highlightEnabled = highlightEnabled.value,
                         onHighlight = closeThen("highlight"),
                         onHelp = closeThen("help"),
@@ -474,7 +475,7 @@ class StatusFeedbackTest {
         assertRendered("status-dark-compact-saving-caption.png")
         openOptionsSheet()
         var nodes = optionsDialogNodes()
-        val rows = listOf("Highlight color: Yellow", "Appearance: System", "Reset view", "Help")
+        val rows = listOf("Highlight color", "Appearance", "Reset view", "Help")
         // Scan area, import and match mode moved to the floating scanner controls.
         listOf("Scan area: Full frame", "Import image", "Whole words", "Contains text")
             .forEach { retired ->
@@ -541,7 +542,7 @@ class StatusFeedbackTest {
         openOptionsSheet()
         nodes = optionsDialogNodes()
         assertFalse(nodes.any { it.textValues().contains("Reset view") })
-        val disabledHighlight = nodeWithText(nodes, "Highlight color: Yellow")
+        val disabledHighlight = nodeWithText(nodes, "Highlight color")
         assertTrue(disabledHighlight.config.contains(SemanticsProperties.Disabled))
         dispatchTouch(
             findComposeView(optionsDialog().window?.decorView),
@@ -576,7 +577,8 @@ class StatusFeedbackTest {
                 }
                 if (optionsOpen.value) {
                     FinderOptionsSheet(
-                        highlightLabel = "Highlight color: Yellow",
+                        highlightName = "Yellow",
+                        highlightColor = HighlightColor.Yellow.composeColor,
                         highlightEnabled = true,
                         onHighlight = { optionsOpen.value = false },
                         onHelp = {
@@ -594,8 +596,8 @@ class StatusFeedbackTest {
         openOptionsSheet()
         val dialog = optionsDialog()
         val nodes = optionsDialogNodes()
-        assertTrue(nodes.any { it.textValues().contains("Highlight color: Yellow") })
-        assertTrue(nodes.any { it.textValues().contains("Appearance: Light") })
+        assertTrue(nodes.any { it.textValues().contains("Highlight color") })
+        assertTrue(nodes.any { it.textValues().contains("Appearance") })
         assertTrue(nodes.any { it.textValues().contains("Help") })
         assertFalse(nodes.any { it.textValues().contains("Reset view") })
         assertDialogRendered(dialog, "options-sheet-light.png")
@@ -864,7 +866,7 @@ class StatusFeedbackTest {
         assertFullyVisibleInDialog(done, decorView)
         assertTouchBounds(done, decorView)
         val density = checkNotNull(activity).resources.displayMetrics.density
-        assertTrue(done.size.height / density >= 52f)
+        assertTrue(done.size.height / density >= 48f)
         assertDialogRendered(dialog, "usage-help-dark-last-section-large-text.png")
         click(done)
         assertEquals(1, dismissCount)
@@ -2025,7 +2027,7 @@ class StatusFeedbackTest {
             "capture=${captureAction.boundsInRoot} rootHeight=$rootHeight listMode=$listMode",
         )
         assertRendered(screenshot)
-        assertTrue(captureAction.boundsInRoot.height >= 52f)
+        assertTrue(captureAction.boundsInRoot.height >= 48f)
         if (!resultsAvailable) {
             assertFalse(nodes.any { it.textValues().contains("Results (0)") })
         }
@@ -3042,14 +3044,14 @@ class StatusFeedbackTest {
         } ?: emptyList()
 
     private fun openOptionsSheet() {
-        click(nodeWithText(semanticsNodes(composeView), "Options", clickable = true))
+        click(nodeWithText(semanticsNodes(composeView), "Settings", clickable = true))
         advanceFramesUntil {
             activeOptionsDialogNodes().any { node ->
                 node.textValues().contains("Help") && node.size.width > 0 &&
                     node.size.height > 0
             }
         }
-        val optionsTitle = nodeWithText(optionsDialogNodes(), "Options")
+        val optionsTitle = nodeWithText(optionsDialogNodes(), "Settings")
         assertEquals(expectedFontScale, optionsTitle.layoutInfo.density.fontScale)
         val dialog = optionsDialog()
         val decor = checkNotNull(dialog.window?.decorView)

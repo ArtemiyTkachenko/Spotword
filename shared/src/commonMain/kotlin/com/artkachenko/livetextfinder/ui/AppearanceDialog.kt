@@ -61,7 +61,7 @@ internal fun AppearanceDialog(
             }
         },
         confirmButton = {
-            FinderSecondaryAction(stringResource(Res.string.status_cancel), onDismiss)
+            FinderDialogAction(stringResource(Res.string.status_cancel), onDismiss)
         },
     )
 }

@@ -1,23 +1,14 @@
 package com.artkachenko.livetextfinder.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,11 +16,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.artkachenko.livetextfinder.search.HighlightColor
 import livetextfinder.shared.generated.resources.Res
@@ -40,8 +27,6 @@ import livetextfinder.shared.generated.resources.highlight_color_custom_descript
 import livetextfinder.shared.generated.resources.highlight_color_cyan
 import livetextfinder.shared.generated.resources.highlight_color_done
 import livetextfinder.shared.generated.resources.highlight_color_magenta
-import livetextfinder.shared.generated.resources.highlight_color_presets
-import livetextfinder.shared.generated.resources.highlight_color_selected
 import livetextfinder.shared.generated.resources.highlight_color_title
 import livetextfinder.shared.generated.resources.highlight_color_white
 import livetextfinder.shared.generated.resources.highlight_color_yellow
@@ -90,47 +75,41 @@ internal fun HighlightColorDialog(
                 Column(
                     modifier = Modifier.heightIn(max = 360.dp).fillMaxWidth()
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(FinderSpacing.medium),
+                    verticalArrangement = Arrangement.spacedBy(FinderSpacing.small),
                 ) {
-                    Text(
-                        stringResource(Res.string.highlight_color_presets),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(Res.string.highlight_color_custom_description),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth().selectableGroup(),
-                        maxItemsInEachRow = 2,
-                        horizontalArrangement = Arrangement.spacedBy(FinderSpacing.extraSmall),
-                        verticalArrangement = Arrangement.spacedBy(FinderSpacing.extraSmall),
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth().selectableGroup()) {
                         HighlightColor.entries.forEach { color ->
-                            HighlightColorSwatch(
+                            val name = localizedHighlightColorName(color)
+                            HighlightColorOption(
+                                label = name,
+                                accessibilityLabel = name,
                                 color = color,
                                 selected = selectedColor == color,
                                 enabled = enabled,
                                 onClick = { onSelectColor(color) },
                             )
                         }
+                        CustomColorRow(
+                            color = selectedColor,
+                            selected = isCustomSelected,
+                            enabled = enabled,
+                            onClick = {
+                                resetDraftToSelection()
+                                customEditor = true
+                            },
+                        )
                     }
-                    CustomColorRow(
-                        color = selectedColor,
-                        selected = isCustomSelected,
-                        enabled = enabled,
-                        onClick = {
-                            resetDraftToSelection()
-                            customEditor = true
-                        },
+                    Text(
+                        text = stringResource(Res.string.highlight_color_custom_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
         },
         dismissButton = if (customEditor) {
             {
-                FinderSecondaryAction(
+                FinderDialogAction(
                     label = stringResource(Res.string.highlight_color_cancel),
                     onClick = {
                         resetDraftToSelection()
@@ -143,7 +122,7 @@ internal fun HighlightColorDialog(
         },
         confirmButton = {
             if (customEditor) {
-                FinderPrimaryAction(
+                FinderDialogAction(
                     label = stringResource(Res.string.highlight_color_apply),
                     enabled = enabled,
                     onClick = {
@@ -152,60 +131,13 @@ internal fun HighlightColorDialog(
                     },
                 )
             } else {
-                FinderPrimaryAction(
+                FinderDialogAction(
                     label = stringResource(Res.string.highlight_color_done),
-                    enabled = true,
                     onClick = onDismissRequest,
                 )
             }
         },
     )
-}
-
-@Composable
-private fun HighlightColorSwatch(
-    color: HighlightColor,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val label = color.resourceLabel()
-    val labelText = stringResource(label)
-    val swatchShape = MaterialTheme.shapes.extraSmall
-    Row(
-        modifier = Modifier.fillMaxWidth(0.48f)
-            .heightIn(min = 48.dp)
-            .selectable(
-                selected = selected,
-                enabled = enabled,
-                role = Role.RadioButton,
-                onClick = onClick,
-            )
-            .semantics { contentDescription = labelText }
-            .border(
-                width = if (selected && color == HighlightColor.White) 2.dp else 0.dp,
-                color = MaterialTheme.colorScheme.outline,
-                shape = MaterialTheme.shapes.small,
-            )
-            .padding(horizontal = FinderSpacing.extraSmall),
-        horizontalArrangement = Arrangement.spacedBy(FinderSpacing.extraSmall),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(24.dp)
-                .background(color.composeColor, swatchShape)
-                .border(1.dp, MaterialTheme.colorScheme.outline, swatchShape),
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = labelText, style = MaterialTheme.typography.bodyMedium)
-            if (selected) {
-                Text(
-                    stringResource(Res.string.highlight_color_selected),
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        }
-    }
 }
 
 @Composable
