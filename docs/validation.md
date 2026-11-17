@@ -1183,3 +1183,28 @@ A clean uncached host run passed **485 tests in 70 suites with 0 failures** agai
 baselines (58 element, 15 region, 17 screen). `:shared:compileKotlinIosSimulatorArm64` and
 `:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
 device.
+
+## Release build with R8
+
+`androidApp` release builds now use R8 shrinking, obfuscation and resource shrinking, and sign
+with an upload key read from an untracked `keystore.properties` (see `docs/release.md`).
+`:androidApp:assembleRelease` and `:androidApp:bundleRelease` succeeded without a key
+(unsigned): the bundle is 24.5 MB and the universal APK 45 MB, against 60 MB for the debug APK.
+
+The first shrunk build was installed on the `Pixel_9a` emulator (API 36 image), signed locally
+with the debug key for the check only. It launched and showed the camera intro, but live
+recognition failed on the first frame: logcat showed `ComponentDiscovery` unable to
+instantiate ML Kit's `CommonComponentRegistrar`, `TextRegistrar` and `VisionCommonRegistrar`
+(`NoSuchMethodException <init>`). A keep rule for the no-argument constructors of
+`ComponentRegistrar` implementations fixed it. With the rule:
+
+- camera permission request from the intro, then the live camera scanning the emulator's
+  virtual scene, with the Search hint shown;
+- import through the system photo picker of a screenshot containing text: "camera" found
+  4 matches, all highlighted, with match stepping available;
+- Share opened the system share sheet (FileProvider);
+- no `ClassNotFound`, `NoSuchMethod`, `NoClassDefFound` or fatal entries in logcat.
+
+Not checked in the release build: live recognition of real printed text (the virtual scene has
+none), Copy, search lists import/export, scan area, freeze, and the Pixel 10. A build signed
+with the real upload key has not been made.
