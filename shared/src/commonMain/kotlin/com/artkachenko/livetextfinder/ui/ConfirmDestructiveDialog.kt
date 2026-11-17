@@ -21,15 +21,14 @@ internal fun ConfirmDestructiveDialog(
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
-            FinderPrimaryAction(
+            FinderDialogAction(
                 label = confirmLabel,
-                enabled = true,
                 destructive = true,
                 onClick = onConfirm,
             )
         },
         dismissButton = {
-            FinderSecondaryAction(
+            FinderDialogAction(
                 label = stringResource(Res.string.confirm_dialog_cancel),
                 onClick = onDismiss,
             )

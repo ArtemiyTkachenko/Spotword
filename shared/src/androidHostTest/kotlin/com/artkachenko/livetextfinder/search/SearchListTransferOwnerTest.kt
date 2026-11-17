@@ -205,7 +205,7 @@ class SearchListTransferOwnerTest {
         configureOwner(exportOwner, exportSnapshot) { _, _ -> error("Stale export") }
         exportOwner.setLiveContextPredicateForTest { exportSession.state.value == exportSnapshot }
         exportOwner.onStart()
-        exportOwner.exportSelectedList()
+        exportOwner.exportList(checkNotNull(exportSnapshot.activeList))
         exportOwner.onExportResult(Uri.parse("content://test/stale-queued-export"))
         exportSession.setManualQuery("changed before composition")
         Thread(checkNotNull(queuedExport)).start()
@@ -259,11 +259,10 @@ class SearchListTransferOwnerTest {
             releaseOutputOpen = CountDownLatch(1),
         )
         val owner = owner(documents)
-        configureOwner(owner, healthySession(withList = true).state.value) { _, _ ->
-            error("Export must not import a draft.")
-        }
+        val session = healthySession(withList = true).state.value
+        configureOwner(owner, session) { _, _ -> error("Export must not import a draft.") }
         owner.onStart()
-        owner.exportSelectedList()
+        owner.exportList(checkNotNull(session.activeList))
         owner.onExportResult(Uri.parse("content://test/blocked-cancelled-output"))
         assertTrue(awaitLatchOnMain(documents.outputOpenLatch!!))
 
@@ -324,6 +323,12 @@ class SearchListTransferOwnerTest {
         )
         configureOwner(owner, selected) { _, _ -> error("No import") }
         assertTrue(owner.state.value.importEnabled)
+        assertTrue(owner.state.value.exportEnabled)
+
+        configureOwner(
+            owner,
+            selected.copy(persisted = selected.persisted.copy(activeListId = null)),
+        ) { _, _ -> error("No import") }
         assertTrue(owner.state.value.exportEnabled)
 
         configureOwner(owner, selected, SearchListEditorState().startNew()) { _, _ ->
@@ -459,9 +464,17 @@ class SearchListTransferOwnerTest {
     }
 
     @Test
-    fun exportWritesOnlySelectedTermsAndWaitsForFlushAndClose() {
+    fun exportWritesOnlyClickedRowTermsAndWaitsForFlushAndClose() {
         val owner = owner(FakeDocuments())
         val session = healthySession(withList = true)
+        val exported = checkNotNull(session.state.value.activeList)
+        assertNull(session.saveList(null, "Another saved list", "do not export"))
+        session.selectList(null)
+        val before = session.state.value
+        assertFalse(before.activeList?.id == exported.id)
+        val launchedNames = mutableListOf<String>()
+        owner.attach(RuntimeEnvironment.getApplication(), {}, { launchedNames += it })
+        owner.setDocumentAccessForTest(lastDocuments)
         owner.updateContext(
             session.state.value,
             managerOpen = true,
@@ -472,7 +485,8 @@ class SearchListTransferOwnerTest {
             onImportDraft = { _, _ -> error("Export must not import a draft.") },
         )
         owner.onStart()
-        owner.exportSelectedList()
+        owner.exportList(exported)
+        assertEquals(listOf(searchListExportFileName(exported.name)), launchedNames)
         owner.onExportResult(Uri.parse("content://test/output"))
         awaitOwner(owner) { !owner.state.value.busy && owner.state.value.message != null }
         assertContentEquals(
@@ -482,6 +496,45 @@ class SearchListTransferOwnerTest {
         assertTrue(lastDocuments.outputFlushed)
         assertTrue(lastDocuments.outputClosed)
         assertEquals("Exported list.", owner.state.value.message)
+        assertEquals(before, session.state.value)
+        owner.dispose()
+    }
+
+    @Test
+    fun exportRejectsRemovedAndChangedRowsAndUnpublishedContext() {
+        val owner = owner(FakeDocuments())
+        val session = healthySession(withList = true)
+        val current = session.state.value
+        val saved = checkNotNull(current.activeList)
+        var liveContextCurrent = true
+        val launchedNames = mutableListOf<String>()
+        owner.attach(RuntimeEnvironment.getApplication(), {}, { launchedNames += it })
+        owner.updateContext(
+            current,
+            managerOpen = true,
+            editor = SearchListEditorState(),
+            contextRevision = 0L,
+            copy = transferCopy(),
+            isContextCurrent = { liveContextCurrent },
+            onImportDraft = { _, _ -> error("Export must not import a draft.") },
+        )
+        owner.onStart()
+
+        listOf(
+            saved.copy(id = "removed"),
+            saved.copy(name = "Old name"),
+            saved.copy(terms = listOf("old term")),
+        ).forEach { stale ->
+            owner.exportList(stale)
+            assertEquals("Export unavailable.", owner.state.value.message)
+            assertFalse(owner.state.value.busy)
+        }
+
+        liveContextCurrent = false
+        owner.exportList(saved)
+        assertFalse(owner.state.value.busy)
+        assertTrue(launchedNames.isEmpty())
+        assertEquals(current, session.state.value)
         owner.dispose()
     }
 
@@ -506,7 +559,7 @@ class SearchListTransferOwnerTest {
                 onImportDraft = { _, _ -> error("Export must not import a draft.") },
             )
             owner.onStart()
-            owner.exportSelectedList()
+            owner.exportList(checkNotNull(session.state.value.activeList))
             owner.onExportResult(Uri.parse("content://test/output-failure"))
             awaitOwner(owner) {
                 !owner.isTransferInFlightForTest() && !owner.state.value.busy
@@ -535,7 +588,7 @@ class SearchListTransferOwnerTest {
             onImportDraft = { _, _ -> error("Export must not import a draft.") },
         )
         owner.onStart()
-        owner.exportSelectedList()
+        owner.exportList(checkNotNull(session.state.value.activeList))
         owner.onExportResult(Uri.parse("content://test/blocked"))
         assertTrue(awaitLatchOnMain(documents.outputOpenLatch!!))
 

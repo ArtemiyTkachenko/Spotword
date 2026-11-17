@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import com.artkachenko.livetextfinder.AppAppearance
 import com.artkachenko.livetextfinder.ScreenshotVariant
 import com.artkachenko.livetextfinder.assertDialogScreenshot
 import com.artkachenko.livetextfinder.drainMainLooper
@@ -12,22 +13,15 @@ import com.artkachenko.livetextfinder.scanarea.LiveSearchAreaDialog
 import com.artkachenko.livetextfinder.search.HighlightColor
 import com.artkachenko.livetextfinder.search.LiveSearchAreaOwner
 import com.artkachenko.livetextfinder.search.NormalizedSearchArea
-import com.artkachenko.livetextfinder.search.SearchMatchMode
 import com.artkachenko.livetextfinder.search.SearchTermSummary
 import com.artkachenko.livetextfinder.search.StillMatchRow
 import com.artkachenko.livetextfinder.search.TextOccurrence
-import com.artkachenko.livetextfinder.status.RecognitionDetails
-import com.artkachenko.livetextfinder.status.StatusSource
 import livetextfinder.shared.generated.resources.Res
-import livetextfinder.shared.generated.resources.finder_options_highlight
 import livetextfinder.shared.generated.resources.highlight_color_custom
 import livetextfinder.shared.generated.resources.highlight_color_yellow
-import livetextfinder.shared.generated.resources.scan_area_option_full_frame
 import livetextfinder.shared.generated.resources.search_list_delete
 import livetextfinder.shared.generated.resources.search_list_delete_message
 import livetextfinder.shared.generated.resources.search_list_delete_title
-import livetextfinder.shared.generated.resources.search_list_transfer_help
-import livetextfinder.shared.generated.resources.status_details_title
 import org.jetbrains.compose.resources.stringResource
 import org.junit.After
 import org.junit.Test
@@ -97,30 +91,6 @@ class DialogScreenshotTest {
     }
 
     @Test
-    fun statusDetails() {
-        ScreenshotVariant.entries.forEach { variant ->
-            assertDialogScreenshot("status-details-dialog", "frozen-frame", variant) {
-                StatusDetailsDialog(
-                    title = stringResource(Res.string.status_details_title),
-                    details = RecognitionDetails(
-                        source = StatusSource.FrozenFrame,
-                        recognizedLineCount = 3,
-                        outlinedElementCount = 2,
-                        imageWidth = 1280,
-                        imageHeight = 720,
-                        rotationDegrees = 0,
-                        textSample = "Invoice 1042 · Total €36.00",
-                        textUnavailable = false,
-                        retainedOutlines = false,
-                        sourceMessage = null,
-                    ),
-                    onDismissRequest = ::ignore,
-                )
-            }
-        }
-    }
-
-    @Test
     fun highlightColorSwatches() {
         assertDialogScreenshot("highlight-color-dialog", "swatches", ScreenshotVariant.LIGHT) {
             HighlightColorDialog(HighlightColor.Yellow, true, {}, ::ignore)
@@ -184,37 +154,14 @@ class DialogScreenshotTest {
 
     @Test
     fun finderOptions() {
-        assertDialogScreenshot(
-            subject = "finder-options-sheet",
-            state = "live-expanded",
-            variant = ScreenshotVariant.LIGHT,
-            onDialogReady = { root ->
-                val expand = dialogNodes(root).firstNotNullOf { node ->
-                    node.config.getOrNull(SemanticsActions.Expand)?.action
-                }
-                check(expand())
-            },
-        ) {
+        assertDialogScreenshot("finder-options-sheet", "live-expanded", ScreenshotVariant.LIGHT) {
             FinderOptionsSheet(
-                highlightLabel = stringResource(
-                    Res.string.finder_options_highlight,
-                    stringResource(Res.string.highlight_color_yellow),
-                ),
+                highlightName = stringResource(Res.string.highlight_color_yellow),
+                highlightColor = HighlightColor.Yellow.composeColor,
                 highlightEnabled = true,
-                matchMode = SearchMatchMode.Substring,
-                matchModeEnabled = true,
-                onMatchMode = {},
-                liveAreaLabel = stringResource(Res.string.scan_area_option_full_frame),
-                showImport = true,
-                showListTransfer = true,
-                listTransferHelp = stringResource(Res.string.search_list_transfer_help),
-                importListEnabled = true,
-                exportListEnabled = false,
-                onImportList = ::ignore,
-                onExportList = ::ignore,
+                appearanceLabel = appearanceLabel(AppAppearance.System),
+                onAppearance = ::ignore,
                 onHighlight = ::ignore,
-                onLiveArea = ::ignore,
-                onImport = ::ignore,
                 onHelp = ::ignore,
                 onDismissRequest = ::ignore,
             )

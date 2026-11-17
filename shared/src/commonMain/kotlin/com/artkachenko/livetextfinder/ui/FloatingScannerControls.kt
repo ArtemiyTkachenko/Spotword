@@ -2,6 +2,7 @@ package com.artkachenko.livetextfinder.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +29,8 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -38,6 +40,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +52,7 @@ import livetextfinder.shared.generated.resources.capture_zoom_out
 import livetextfinder.shared.generated.resources.scanner_chevron_left
 import livetextfinder.shared.generated.resources.scanner_chevron_right
 import livetextfinder.shared.generated.resources.scanner_match_position
+import livetextfinder.shared.generated.resources.scanner_no_match_selected
 import livetextfinder.shared.generated.resources.scanner_zoom_in
 import livetextfinder.shared.generated.resources.scanner_zoom_out
 import livetextfinder.shared.generated.resources.still_match_next
@@ -109,6 +113,8 @@ internal class FloatingScannerAction(
     val enabled: Boolean = true,
     val inProgress: Boolean = false,
     val accessibilityLabel: String? = null,
+    val selected: Boolean = false,
+    val focusRequester: FocusRequester? = null,
 )
 
 /** A scanner bar action with an icon and optional visible text. */
@@ -125,11 +131,13 @@ internal fun FloatingScannerActionItem(
             modifier = itemModifier
                 .widthIn(min = 48.dp)
                 .heightIn(min = 48.dp)
+                .then(action.focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
                 .clickable(enabled = action.enabled, role = Role.Button, onClick = action.onClick)
                 .semantics {
                     if (targetDescription != null) {
                         contentDescription = targetDescription
                     }
+                    if (action.selected) selected = true
                     if (action.inProgress) {
                         progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate
                     }
@@ -142,12 +150,27 @@ internal fun FloatingScannerActionItem(
             if (action.inProgress) {
                 ScannerPendingIndicator(contentColor)
             } else {
-                Icon(
-                    painter = painterResource(action.icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = contentColor,
-                )
+                Box(
+                    modifier = Modifier.size(24.dp).then(
+                        if (action.selected) {
+                            Modifier.background(
+                                FinderCameraOverlay.selectedControlContainer,
+                                CircleShape,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(action.icon),
+                        contentDescription = null,
+                        modifier = Modifier.size(if (action.selected) 18.dp else 24.dp),
+                        tint = if (action.selected) FinderCameraOverlay.onSelectedControl else
+                            contentColor,
+                    )
+                }
             }
             if (showLabel) {
                 Text(
@@ -257,7 +280,13 @@ internal fun FloatingScannerMatchPill(
             enabled = previousEnabled,
             background = Color.Transparent,
         )
-        ScannerPillReadout(stringResource(Res.string.scanner_match_position, position, count))
+        ScannerPillReadout(
+            if (position > 0) {
+                stringResource(Res.string.scanner_match_position, position, count)
+            } else {
+                stringResource(Res.string.scanner_no_match_selected, count)
+            },
+        )
         ScannerIconButton(
             icon = Res.drawable.scanner_chevron_right,
             label = stringResource(Res.string.still_match_next),
@@ -276,8 +305,7 @@ private fun ScannerPill(
 ) {
     Row(
         modifier = modifier.heightIn(min = 48.dp)
-            .clip(CircleShape)
-            .background(FinderCameraOverlay.controlScrim)
+            .floatingControlSurface(CircleShape)
             .then(interaction),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -311,11 +339,23 @@ private fun ScannerIconButton(
             IconButton(
                 onClick = onClick,
                 enabled = enabled,
-                modifier = Modifier.size(48.dp).semantics {
-                    if (stateLabel != null) {
-                        stateDescription = stateLabel
-                    }
-                },
+                modifier = Modifier.size(48.dp)
+                    .then(
+                        if (background == Color.Transparent) {
+                            Modifier
+                        } else {
+                            Modifier.border(
+                                FinderCameraOverlay.controlOutlineWidth,
+                                FinderCameraOverlay.controlOutline,
+                                CircleShape,
+                            )
+                        },
+                    )
+                    .semantics {
+                        if (stateLabel != null) {
+                            stateDescription = stateLabel
+                        }
+                    },
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = background,
                     contentColor = FinderCameraOverlay.onControlScrim,

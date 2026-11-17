@@ -1,11 +1,6 @@
 package com.artkachenko.livetextfinder.status
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.artkachenko.livetextfinder.camera.FreezePresentationState
 import com.artkachenko.livetextfinder.camera.ImportedImagePhase
 import com.artkachenko.livetextfinder.camera.ImportedImageState
@@ -17,13 +12,11 @@ import com.artkachenko.livetextfinder.search.SearchPresentation
 import com.artkachenko.livetextfinder.search.SearchSessionState
 import com.artkachenko.livetextfinder.search.TextSearchResult
 import com.artkachenko.livetextfinder.ui.ContextMessage
-import com.artkachenko.livetextfinder.ui.StatusDetailsDialog
-import com.artkachenko.livetextfinder.ui.StatusSummary
 import com.artkachenko.livetextfinder.ui.searchSessionErrorMessage
 import com.artkachenko.livetextfinder.ui.sourceStatusMessage
 import livetextfinder.shared.generated.resources.Res
+import livetextfinder.shared.generated.resources.scanner_camera_access_needed
 import livetextfinder.shared.generated.resources.status_camera_error_recovery
-import livetextfinder.shared.generated.resources.status_details_title
 import livetextfinder.shared.generated.resources.status_freezing
 import livetextfinder.shared.generated.resources.status_import_choosing
 import livetextfinder.shared.generated.resources.status_import_error
@@ -52,21 +45,11 @@ internal fun FinderStatusRegion(
     highlights: Highlights,
     resultsAvailable: Boolean = true,
     areaSelected: Boolean,
-    shouldShowViews: Boolean,
-    liveStageBand: Boolean = false,
+    showSavedSearchMessages: Boolean,
     onRetrySavedData: () -> Unit,
     onRequestReset: () -> Unit,
-    floatingContent: (@Composable (String, @Composable () -> Unit) -> Unit)? = null,
-    floatingDetailsOpen: Boolean = false,
-    onDismissFloatingDetails: () -> Unit = {},
+    floatingContent: @Composable (String, @Composable () -> Unit) -> Unit,
 ) {
-    var detailsOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(shouldShowViews) {
-        if (!shouldShowViews) {
-            detailsOpen = false
-        }
-    }
-
     val source = resolveStatusSource(importedState.phase, freezeState.mode)
     val selectedContent = when (source) {
         StatusSource.ImportedImage -> importedState.snapshot
@@ -81,38 +64,6 @@ internal fun FinderStatusRegion(
         } else {
             null
         }
-    }
-    val selectedDetails = when (source) {
-        StatusSource.ImportedImage,
-        StatusSource.FrozenFrame,
-        StatusSource.LiveCamera -> {
-            val outlinedCount = when (source) {
-                StatusSource.ImportedImage,
-                StatusSource.FrozenFrame -> highlights.outlines.size
-                else -> presentation.outlinedElements.size
-            }
-            val retainedOutlines = source == StatusSource.LiveCamera &&
-                presentation.outlinedElements.isNotEmpty() &&
-                presentation.occurrences.any { it.firstMissingAtMillis != null }
-            val sourceMessage = if (
-                source == StatusSource.LiveCamera &&
-                state.status != OcrStatus.Scanning &&
-                state.status != OcrStatus.TextRecognized
-            ) {
-                state.message.takeIf(String::isNotBlank)
-            } else {
-                null
-            }
-            recognitionDetails(
-                source = source,
-                content = selectedContent,
-                outlinedElementCount = outlinedCount.takeIf { selectedContent != null },
-                retainedOutlines = retainedOutlines,
-                sourceMessage = sourceMessage,
-            )
-        }
-        StatusSource.ImportProgress,
-        StatusSource.FreezingFrame -> null
     }
     val statusMessage = when (source) {
         StatusSource.ImportProgress -> when (importedState.phase) {
@@ -144,76 +95,71 @@ internal fun FinderStatusRegion(
             areaSelected,
         )
     }
-    val statusVisible = shouldShowViews || source == StatusSource.ImportProgress ||
-        source == StatusSource.ImportedImage
-
-    val messages: @Composable () -> Unit = {
+    val label = if (state.status == OcrStatus.PermissionRequired &&
+        source == StatusSource.LiveCamera
+    ) {
+        stringResource(Res.string.scanner_camera_access_needed)
+    } else {
+        statusMessage
+    }
+    floatingContent(label) {
         freezeState.error?.let { error ->
-            ContextMessage(message = error, isError = true, floating = floatingContent != null)
+            ContextMessage(message = error, isError = true, floating = true)
         }
-        when {
-            sessionState.recoveryRequired -> ContextMessage(
-                message = listOfNotNull(
-                    sessionState.error?.let { error -> searchSessionErrorMessage(error) }
-                        ?: stringResource(Res.string.status_recovery),
-                    stringResource(Res.string.status_reset_explanation),
-                ).joinToString("\n"),
-                actionLabel = stringResource(Res.string.status_reset_saved_data),
-                onAction = onRequestReset,
-                isError = true,
-                floating = floatingContent != null,
-            )
-            sessionState.error != null -> ContextMessage(
-                message = searchSessionErrorMessage(sessionState.error) + if (sessionState.saving) {
-                    " · ${stringResource(Res.string.status_saving)}"
-                } else {
-                    ""
-                },
-                actionLabel = stringResource(Res.string.status_retry),
-                onAction = onRetrySavedData,
-                isError = true,
-                floating = floatingContent != null,
-            )
-            !sessionState.loaded -> ContextMessage(
-                stringResource(Res.string.status_loading_searches),
-                floating = floatingContent != null,
+        if (showSavedSearchMessages) {
+            SavedSearchStatusMessages(
+                sessionState,
+                onRetrySavedData,
+                onRequestReset,
+                floating = true,
             )
         }
         if (importedState.phase == ImportedImagePhase.Error) {
             ContextMessage(
                 message = importedState.message ?: stringResource(Res.string.status_import_error),
                 isError = true,
-                floating = floatingContent != null,
+                floating = true,
             )
         }
-    }
-    if (floatingContent != null) {
-        floatingContent(statusMessage) {
-            messages()
-            if (source == StatusSource.LiveCamera && state.status == OcrStatus.Error) {
-                ContextMessage(message = statusMessage, isError = true, floating = true)
-            }
+        if (source == StatusSource.LiveCamera && state.status == OcrStatus.Error) {
+            ContextMessage(message = statusMessage, isError = true, floating = true)
         }
-    } else {
-        messages()
     }
-    if (floatingContent == null && statusVisible) {
-        StatusSummary(
-            message = statusMessage,
-            details = selectedDetails.takeIf { shouldShowViews },
-            onDetails = { detailsOpen = true },
-            isError = source == StatusSource.LiveCamera && state.status == OcrStatus.Error,
-            stageBand = liveStageBand,
+}
+
+@Composable
+internal fun SavedSearchStatusMessages(
+    sessionState: SearchSessionState,
+    onRetrySavedData: () -> Unit,
+    onRequestReset: () -> Unit,
+    floating: Boolean = false,
+) {
+    when {
+        sessionState.recoveryRequired -> ContextMessage(
+            message = listOfNotNull(
+                sessionState.error?.let { error -> searchSessionErrorMessage(error) }
+                    ?: stringResource(Res.string.status_recovery),
+                stringResource(Res.string.status_reset_explanation),
+            ).joinToString("\n"),
+            actionLabel = stringResource(Res.string.status_reset_saved_data),
+            onAction = onRequestReset,
+            isError = true,
+            floating = floating,
         )
-    }
-    if ((detailsOpen || floatingDetailsOpen) && shouldShowViews && selectedDetails != null) {
-        StatusDetailsDialog(
-            title = stringResource(Res.string.status_details_title),
-            details = selectedDetails,
-            onDismissRequest = {
-                detailsOpen = false
-                onDismissFloatingDetails()
+        sessionState.error != null -> ContextMessage(
+            message = searchSessionErrorMessage(sessionState.error) + if (sessionState.saving) {
+                " · ${stringResource(Res.string.status_saving)}"
+            } else {
+                ""
             },
+            actionLabel = stringResource(Res.string.status_retry),
+            onAction = onRetrySavedData,
+            isError = true,
+            floating = floating,
+        )
+        !sessionState.loaded -> ContextMessage(
+            stringResource(Res.string.status_loading_searches),
+            floating = floating,
         )
     }
 }

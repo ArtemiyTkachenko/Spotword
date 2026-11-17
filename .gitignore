@@ -22,3 +22,8 @@ node_modules/
 # Keep on disk for provenance; durable requirements/results belong in docs/*.md.
 /docs/agent-workflow/stages/
 /docs/agent-workflow/state.json
+
+# Release signing: the upload key and its passwords never enter the repository.
+keystore.properties
+*.jks
+*.keystore

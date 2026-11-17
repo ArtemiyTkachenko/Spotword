@@ -21,10 +21,10 @@ internal fun SearchListTransferContextEffect(
     searchEditing: SavedSearchEditingState,
 ) {
     val transferCopy = searchListTransferCopy()
+    val managerOpen = searchEditing.isOpen
+    val editor = searchEditing.editor
+    val contextRevision = searchEditing.contextRevision
     SideEffect {
-        val managerOpen = searchEditing.isOpen
-        val editor = searchEditing.editor
-        val contextRevision = searchEditing.contextRevision
         transferOwner.updateContext(
             sessionState = sessionState,
             managerOpen = managerOpen,

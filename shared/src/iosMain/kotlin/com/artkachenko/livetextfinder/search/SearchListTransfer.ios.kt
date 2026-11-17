@@ -27,7 +27,7 @@ internal actual class SearchListTransferOwner actual constructor() {
 
     internal actual fun importList() = Unit
 
-    internal actual fun exportSelectedList() = Unit
+    internal actual fun exportList(list: SavedSearchList) = Unit
 
     internal actual fun cancel() = Unit
 

@@ -1,21 +1,14 @@
 package com.artkachenko.livetextfinder.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -146,32 +139,6 @@ internal fun LiveTextFinderTheme(
         shapes = finderShapes,
         content = content,
     )
-}
-
-@Composable
-internal fun FinderPrimaryAction(
-    label: String,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-    destructive: Boolean = false,
-    onClick: () -> Unit,
-) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.padding(bottom = 16.dp).widthIn(min = 48.dp).heightIn(min = 52.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = if (destructive) {
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError,
-            )
-        } else {
-            ButtonDefaults.buttonColors()
-        },
-    ) {
-        Text(label)
-    }
 }
 
 @Composable

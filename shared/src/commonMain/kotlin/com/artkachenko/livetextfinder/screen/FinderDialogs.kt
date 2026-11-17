@@ -1,23 +1,33 @@
 package com.artkachenko.livetextfinder.screen
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.artkachenko.livetextfinder.AppAppearance
 import com.artkachenko.livetextfinder.inspection.StillInspectionMatchesDialog
 import com.artkachenko.livetextfinder.inspection.StillInspectionState
+import com.artkachenko.livetextfinder.lists.FinderListsSheet
 import com.artkachenko.livetextfinder.lists.SavedSearchEditingState
 import com.artkachenko.livetextfinder.scanarea.LiveSearchAreaDialogHost
 import com.artkachenko.livetextfinder.scanarea.LiveSearchAreaState
-import com.artkachenko.livetextfinder.search.SearchListTransferState
+import com.artkachenko.livetextfinder.search.SearchListTransferOwner
 import com.artkachenko.livetextfinder.search.SearchSessionState
+import com.artkachenko.livetextfinder.status.SavedSearchStatusMessages
+import com.artkachenko.livetextfinder.ui.AppearanceDialog
 import com.artkachenko.livetextfinder.ui.ConfirmDestructiveDialog
-import com.artkachenko.livetextfinder.ui.FinderOptionsSheetHost
+import com.artkachenko.livetextfinder.ui.FinderOptionsSheet
 import com.artkachenko.livetextfinder.ui.HighlightColorDialog
+import com.artkachenko.livetextfinder.ui.RetainedInspectionActionDispatcher
 import com.artkachenko.livetextfinder.ui.SearchTermResultsDialog
 import com.artkachenko.livetextfinder.ui.UsageHelpDialog
+import com.artkachenko.livetextfinder.ui.appearanceLabel
+import com.artkachenko.livetextfinder.ui.localizedHighlightColorName
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.saved_search_reset_confirm
 import livetextfinder.shared.generated.resources.saved_search_reset_message
@@ -30,7 +40,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /** Which of the main screen's own dialogs and sheets are open. */
 internal class FinderDialogsState {
-    var recognitionDetailsOpen by mutableStateOf(false)
+    var appearanceOpen by mutableStateOf(false)
     var optionsOpen by mutableStateOf(false)
     var highlightColorOpen by mutableStateOf(false)
     var helpOpen by mutableStateOf(false)
@@ -61,21 +71,17 @@ internal fun rememberFinderDialogsState(searchIdentity: String): FinderDialogsSt
  */
 @Composable
 internal fun FinderDialogs(
+    appearance: AppAppearance,
+    onAppearanceChange: (AppAppearance) -> Unit,
     dialogs: FinderDialogsState,
     sessionState: SearchSessionState,
     searchState: FinderSearchState,
     inspection: StillInspectionState,
     searchEditing: SavedSearchEditingState,
+    transferOwner: SearchListTransferOwner,
+    snackbarHostState: SnackbarHostState,
     liveArea: LiveSearchAreaState,
-    transferState: SearchListTransferState,
-    actions: FinderSourceActions,
-    liveAreaLabel: String?,
-    showImport: Boolean,
     shouldShowViews: Boolean,
-    onImportList: () -> Unit,
-    onExportList: () -> Unit,
-    floatingLive: Boolean = false,
-    recognitionDetailsAvailable: Boolean = false,
 ) {
     val resultsAvailable = searchState.resultsAvailable
     val hasStillSource = inspection.source != null
@@ -88,6 +94,8 @@ internal fun FinderDialogs(
         )
     }
     if (dialogs.termResultsOpen) {
+        val focus = LocalFocusManager.current
+        val keyboard = LocalSoftwareKeyboardController.current
         SearchTermResultsDialog(
             terms = searchState.termSummaries,
             resultsAvailable = resultsAvailable,
@@ -97,7 +105,33 @@ internal fun FinderDialogs(
                 inspection.locateFirstForTerm(termId) { dialogs.termResultsOpen = false }
             },
             onDismiss = { dialogs.termResultsOpen = false },
+            onOccurrences = if (hasStillSource && inspection.rows.isNotEmpty()) {
+                {
+                    RetainedInspectionActionDispatcher.showOccurrences(
+                        clearFocus = focus::clearFocus,
+                        hideKeyboard = { keyboard?.hide() },
+                        setTermsOpen = { dialogs.termResultsOpen = it },
+                        setOccurrencesOpen = { inspection.copySession.updateDialogOpen(it) },
+                    )
+                }
+            } else {
+                null
+            },
         )
+    }
+    if (searchEditing.isOpen) {
+        FinderListsSheet(
+            sessionState = sessionState,
+            searchEditing = searchEditing,
+            transferOwner = transferOwner,
+            snackbarHostState = snackbarHostState,
+        ) {
+            SavedSearchStatusMessages(
+                sessionState = sessionState,
+                onRetrySavedData = searchEditing::retrySavedSearches,
+                onRequestReset = { dialogs.resetConfirmOpen = true },
+            )
+        }
     }
     searchEditing.pendingDeleteId?.let { id ->
         val name = sessionState.persisted.lists.firstOrNull { list -> list.id == id }
@@ -134,23 +168,40 @@ internal fun FinderDialogs(
     if (dialogs.helpOpen) {
         UsageHelpDialog(onDismissRequest = { dialogs.helpOpen = false })
     }
+    if (dialogs.appearanceOpen) {
+        AppearanceDialog(
+            selected = appearance,
+            onSelect = {
+                onAppearanceChange(it)
+                dialogs.appearanceOpen = false
+            },
+            onDismiss = { dialogs.appearanceOpen = false },
+        )
+    }
     if (dialogs.optionsOpen) {
-        FinderOptionsSheetHost(
-            sessionState = sessionState,
-            transferState = transferState,
-            liveAreaLabel = liveAreaLabel,
-            showImport = showImport,
-            onMatchMode = searchEditing::setMatchMode,
-            onImportList = onImportList,
-            onExportList = onExportList,
-            onHighlight = { dialogs.highlightColorOpen = true },
-            onLiveArea = actions::startAreaEditing,
-            onImport = actions::beginImport,
-            onHelp = { dialogs.helpOpen = true },
-            onDismiss = { dialogs.optionsOpen = false },
-            recognitionDetailsEnabled = recognitionDetailsAvailable,
-            onRecognitionDetails = if (floatingLive) {
-                { dialogs.recognitionDetailsOpen = true }
+        FinderOptionsSheet(
+            highlightName = localizedHighlightColorName(sessionState.persisted.highlightColor),
+            highlightColor = sessionState.persisted.highlightColor.composeColor,
+            highlightEnabled = savedSearchEditable,
+            appearanceLabel = appearanceLabel(appearance),
+            onAppearance = {
+                dialogs.optionsOpen = false
+                dialogs.appearanceOpen = true
+            },
+            onHighlight = {
+                dialogs.optionsOpen = false
+                dialogs.highlightColorOpen = true
+            },
+            onHelp = {
+                dialogs.optionsOpen = false
+                dialogs.helpOpen = true
+            },
+            onDismissRequest = { dialogs.optionsOpen = false },
+            onResetView = if (hasStillSource && shouldShowViews) {
+                {
+                    dialogs.optionsOpen = false
+                    inspection.resetZoom()
+                }
             } else {
                 null
             },

@@ -1,9 +1,7 @@
 package com.artkachenko.livetextfinder.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.artkachenko.livetextfinder.search.SearchTermSummary
 import livetextfinder.shared.generated.resources.Res
+import livetextfinder.shared.generated.resources.inspection_results_occurrences
 import livetextfinder.shared.generated.resources.search_context_count_unavailable
 import livetextfinder.shared.generated.resources.search_result_count_description
 import livetextfinder.shared.generated.resources.search_results_done
@@ -47,6 +46,7 @@ internal fun SearchTermResultsDialog(
     canLocate: Boolean = true,
     onSelect: (String) -> Unit = {},
     onDismiss: () -> Unit,
+    onOccurrences: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -133,18 +133,7 @@ internal fun SearchTermResultsDialog(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                         ) {
-                            Box(
-                                modifier = Modifier.size(20.dp)
-                                    .background(
-                                        term.color.composeColor,
-                                        MaterialTheme.shapes.extraSmall,
-                                    )
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline,
-                                        MaterialTheme.shapes.extraSmall,
-                                    ),
-                            )
+                            FinderColorSwatch(term.color.composeColor, size = 20.dp)
                             Text(
                                 term.label,
                                 modifier = Modifier.weight(1f),
@@ -185,8 +174,18 @@ internal fun SearchTermResultsDialog(
                 }
             }
         },
+        dismissButton = if (onOccurrences != null) {
+            {
+                FinderDialogAction(
+                    label = stringResource(Res.string.inspection_results_occurrences),
+                    onClick = onOccurrences,
+                )
+            }
+        } else {
+            null
+        },
         confirmButton = {
-            FinderSecondaryAction(
+            FinderDialogAction(
                 label = stringResource(Res.string.search_results_done),
                 onClick = onDismiss,
             )

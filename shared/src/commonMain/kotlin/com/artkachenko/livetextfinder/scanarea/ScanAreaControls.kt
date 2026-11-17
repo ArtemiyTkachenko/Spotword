@@ -20,6 +20,7 @@ import com.artkachenko.livetextfinder.ui.FinderCameraOverlay
 import com.artkachenko.livetextfinder.ui.FinderPrimaryAction
 import com.artkachenko.livetextfinder.ui.FinderSecondaryAction
 import com.artkachenko.livetextfinder.ui.FinderSpacing
+import com.artkachenko.livetextfinder.ui.floatingControlSurface
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.scan_area_apply
 import livetextfinder.shared.generated.resources.scan_area_badge
@@ -62,7 +63,7 @@ internal fun ScanAreaEditBar(
     Column(
         modifier.fillMaxWidth().then(
             if (floating) {
-                Modifier.background(FinderCameraOverlay.controlScrim, RoundedCornerShape(20.dp))
+                Modifier.floatingControlSurface(RoundedCornerShape(20.dp))
             } else {
                 Modifier
             },

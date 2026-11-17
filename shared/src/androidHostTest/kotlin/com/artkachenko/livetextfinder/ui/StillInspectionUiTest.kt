@@ -7,18 +7,13 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.BroadcastFrameClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -26,6 +21,7 @@ import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
@@ -48,14 +44,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
-import com.artkachenko.livetextfinder.camera.FreezeMode
-import com.artkachenko.livetextfinder.camera.FreezePresentationState
 import com.artkachenko.livetextfinder.camera.FrozenFrameFit
 import com.artkachenko.livetextfinder.camera.FrozenFrameOwner
-import com.artkachenko.livetextfinder.camera.FrozenSearchFrame
 import com.artkachenko.livetextfinder.camera.ImportedImageOwner
-import com.artkachenko.livetextfinder.camera.ImportedImagePhase
-import com.artkachenko.livetextfinder.camera.ImportedImageState
+import com.artkachenko.livetextfinder.camera.LiveCaptureControls
 import com.artkachenko.livetextfinder.camera.ProcessedImportedImage
 import com.artkachenko.livetextfinder.camera.StillViewTransform
 import com.artkachenko.livetextfinder.camera.plainTextClipEntry
@@ -74,24 +66,18 @@ import com.artkachenko.livetextfinder.inspection.rememberStillMatchNavigationCoo
 import com.artkachenko.livetextfinder.ocr.FrameInfo
 import com.artkachenko.livetextfinder.ocr.ImportedTextSnapshot
 import com.artkachenko.livetextfinder.ocr.OcrSnapshot
-import com.artkachenko.livetextfinder.ocr.OcrStatus
-import com.artkachenko.livetextfinder.ocr.OcrUiState
 import com.artkachenko.livetextfinder.ocr.TextBounds
 import com.artkachenko.livetextfinder.ocr.TextElement
 import com.artkachenko.livetextfinder.ocr.TextLine
 import com.artkachenko.livetextfinder.ocr.TextPoint
+import com.artkachenko.livetextfinder.screen.FloatingLiveScanner
+import com.artkachenko.livetextfinder.screen.FloatingRetainedControls
+import com.artkachenko.livetextfinder.screen.retainedActions
 import com.artkachenko.livetextfinder.search.ActiveSearchSpec
 import com.artkachenko.livetextfinder.search.ElementOutline
-import com.artkachenko.livetextfinder.search.FrameIdentity
 import com.artkachenko.livetextfinder.search.HighlightColor
-import com.artkachenko.livetextfinder.search.Highlights
 import com.artkachenko.livetextfinder.search.MatchOutlineBounds
 import com.artkachenko.livetextfinder.search.PreviewPoint
-import com.artkachenko.livetextfinder.search.SavedSearchList
-import com.artkachenko.livetextfinder.search.SearchListEditorState
-import com.artkachenko.livetextfinder.search.SearchMatchMode
-import com.artkachenko.livetextfinder.search.SearchPresentationOwner
-import com.artkachenko.livetextfinder.search.SearchSessionState
 import com.artkachenko.livetextfinder.search.SearchTerm
 import com.artkachenko.livetextfinder.search.StillMatchCopyPayload
 import com.artkachenko.livetextfinder.search.StillMatchRow
@@ -100,10 +86,7 @@ import com.artkachenko.livetextfinder.search.drawHighlightOutlines
 import com.artkachenko.livetextfinder.search.drawSelectedOccurrenceMarker
 import com.artkachenko.livetextfinder.search.inMemorySearchSessionController
 import com.artkachenko.livetextfinder.search.searchRecognizedContent
-import com.artkachenko.livetextfinder.search.searchRecognizedText
 import com.artkachenko.livetextfinder.search.stillMatchRows
-import com.artkachenko.livetextfinder.status.FinderStatusRegion
-import com.artkachenko.livetextfinder.visualOutputDirectory
 import com.artkachenko.livetextfinder.writeVisualScreenshot
 import kotlin.math.roundToInt
 import kotlin.test.Test
@@ -156,595 +139,172 @@ class StillInspectionUiTest {
     }
 
     @Test
-    fun retainedLayoutKeepsPositiveViewportAcrossSourcesAndThemes() {
-        val dockBoundsByThemeAndSelection = mutableMapOf<Pair<Boolean, Boolean>, Pair<Rect, Rect>>()
-        listOf(false, true).forEach { darkTheme ->
-            listOf("live", "frozen", "imported").forEach { source ->
-                listOf(false, true).forEach { selected ->
-                    disposeComposition()
-                    val saving = mutableStateOf(false)
-                    val previewSize = mutableStateOf(IntSize.Zero)
-                    val previewBounds = mutableStateOf<Rect?>(null)
-                    val cameraState = OcrUiState(
-                        status = OcrStatus.TextRecognized,
-                        snapshot = snapshot(listOf("Invoice 2048", "Invoice 2048")),
-                    )
-                    val importedText = importedSnapshot(listOf("Invoice 2048", "Invoice 2048"))
-                    val importedState = if (source == "imported") {
-                        ImportedImageState(
-                            phase = ImportedImagePhase.Imported,
-                            snapshot = importedText,
-                        )
-                    } else {
-                        ImportedImageState()
-                    }
-                    val freezeState = if (source == "frozen") {
-                        FreezePresentationState(
-                            mode = FreezeMode.Frozen,
-                            requestId = 1L,
-                            frame = FrozenSearchFrame(
-                                1L,
-                                FrameIdentity(1L, 1L),
-                                checkNotNull(cameraState.snapshot),
-                            ),
-                        )
-                    } else {
-                        FreezePresentationState()
-                    }
-                    val liveSearch = searchRecognizedText("invoice", cameraState)
-                    val search = when (source) {
-                        "live" -> liveSearch
-                        "imported" -> searchRecognizedContent(liveSearch.spec, importedText)
-                        else -> searchRecognizedContent(
-                            liveSearch.spec,
-                            freezeState.frame?.snapshot,
-                        )
-                    }
-                    val rows = stillMatchRows(search)
-                    val selectedRow = rows.first()
-                    val presentation = SearchPresentationOwner().present(
-                        search.spec,
-                        cameraState,
-                        nowMillis = 0L,
-                    )
-
-                    val renderStatus: @Composable () -> Unit = {
-                        FinderStatusRegion(
-                            state = cameraState,
-                            importedState = importedState,
-                            freezeState = freezeState,
-                            sessionState = SearchSessionState(
-                                loaded = true,
-                                saving = saving.value,
-                            ),
-                            search = search,
-                            presentation = presentation,
-                            highlights = Highlights(true, emptyList()),
-                            areaSelected = false,
-                            shouldShowViews = true,
-                            liveStageBand = source == "live",
-                            onRetrySavedData = {},
-                            onRequestReset = {},
-                        )
-                    }
-                    mount(360, 800) {
-                        LiveTextFinderTheme(darkThemeOverride = darkTheme, dynamicColor = false) {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = MaterialTheme.colorScheme.background,
-                            ) {
-                                FinderContentAssembly(
-                                    scrollState = androidx.compose.foundation.ScrollState(0),
-                                    scrollable = false,
-                                    modifier = Modifier.fillMaxSize()
-                                        .safeDrawingPadding()
-                                        .imePadding(),
-                                    topContent = {
-                                        FinderLiveAppBar(onOptions = {})
-                                        if (source == "live") {
-                                            Column(Modifier.fillMaxWidth()) {}
-                                            renderStatus()
-                                        } else {
-                                            Column(
-                                                Modifier.fillMaxWidth(),
-                                                verticalArrangement = Arrangement.spacedBy(
-                                                    FinderSpacing.extraSmall,
-                                                ),
-                                            ) {
-                                                renderStatus()
-                                            }
-                                        }
-                                    },
-                                    managerContent = {},
-                                    viewportContent = {
-                                        StillInspectionViewport(
-                                            sourceIdentity = "$source:fixture",
-                                            fit = FrozenFrameFit(100, 100, 0, 100f, 100f),
-                                            viewportSize = previewSize.value,
-                                            transform = StillViewTransform(),
-                                            onTransformChange = {},
-                                            modifier = Modifier.weight(1f).fillMaxWidth()
-                                                .background(Color.Black)
-                                                .onSizeChanged { previewSize.value = it }
-                                                .onGloballyPositioned {
-                                                    previewBounds.value = it.boundsInRoot()
-                                                },
-                                        ) {
-                                            Canvas(Modifier.matchParentSize()) {
-                                                drawRect(Color.DarkGray)
-                                                drawRect(
-                                                    Color.LightGray,
-                                                    topLeft = Offset(
-                                                        size.width * 0.2f,
-                                                        size.height * 0.3f,
-                                                    ),
-                                                    size = Size(
-                                                        size.width * 0.6f,
-                                                        size.height * 0.4f,
-                                                    ),
-                                                )
-                                            }
-                                        }
-                                    },
-                                    footerContent = {
-                                        if (source != "live") {
-                                            Column(
-                                                Modifier.fillMaxWidth().padding(
-                                                    horizontal = FinderSpacing.large,
-                                                    vertical = FinderSpacing.extraSmall,
-                                                ),
-                                                verticalArrangement = Arrangement.spacedBy(
-                                                    FinderSpacing.extraSmall,
-                                                ),
-                                            ) {
-                                                StillInspectionControls(
-                                                    matchCount = rows.size,
-                                                    showMatchesAction = false,
-                                                    zoom = 1f,
-                                                    canZoom = true,
-                                                    onZoomIn = {},
-                                                    onZoomOut = {},
-                                                    onReset = {},
-                                                    onMatches = {},
-                                                )
-                                                if (selected) {
-                                                    StillMatchNavigationControls(
-                                                        position = 1,
-                                                        count = rows.size,
-                                                        matchedTerm = selectedRow.termLabel,
-                                                        matchedText = selectedRow.matchedText,
-                                                        canLocate = true,
-                                                        onPrevious = {},
-                                                        onNext = {},
-                                                        onCopy = {},
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        FinderLiveDock(
-                                            search = FinderSearchBar(
-                                                query = "invoice",
-                                                onQueryChange = {},
-                                                activeListName = null,
-                                                activeListTermCount = 0,
-                                                matchMode = search.spec.matchMode,
-                                                saving = saving.value,
-                                                searchListsLabel = "Lists",
-                                                onSearchLists = {},
-                                                onTerms = {},
-                                                onUseManual = {},
-                                                onResults = {},
-                                            ),
-                                            capture = FinderCaptureActions(
-                                                captureLabel = if (source == "live") {
-                                                    "Freeze frame"
-                                                } else {
-                                                    null
-                                                },
-                                                captureEnabled = true,
-                                                onCapture = {},
-                                                pendingCaptureLabel = null,
-                                                onCancelCapture = {},
-                                                secondaryActionLabel = null,
-                                                onSecondaryAction = {},
-                                            ),
-                                            resultsLabel = "Results (${rows.size})",
-                                            onOccurrences = {},
-                                            returnLabel = when (source) {
-                                                "frozen" -> "Resume scanning"
-                                                "imported" -> "Return to camera"
-                                                else -> null
-                                            },
-                                            onReturn = {},
-                                            onCancelShare = {},
-                                        )
-                                    },
-                                )
-                            }
-                        }
-                    }
-
-                    val retainedBounds = checkNotNull(previewBounds.value)
-                    assertTrue(retainedBounds.height > 0f)
-                    val dockNodes = nodes(composeRoot())
-                    assertTrue(dockNodes.any { nodeText(it) == "Options" })
-                    val queryNode = dockNodes.single {
-                        it.config.getOrNull(SemanticsProperties.EditableText)?.text == "invoice"
-                    }
-                    val primaryLabel = when (source) {
-                        "live" -> "Freeze frame"
-                        "frozen" -> "Resume scanning"
-                        else -> "Return to camera"
-                    }
-                    val primaryNode = dockNodes.first { node ->
-                        nodeText(node) == primaryLabel &&
-                            node.config.contains(SemanticsActions.OnClick)
-                    }
-                    val dockBounds = queryNode.boundsInRoot to primaryNode.boundsInRoot
-                    val comparisonKey = darkTheme to selected
-                    if (source == "live") {
-                        dockBoundsByThemeAndSelection[comparisonKey] = dockBounds
-                    } else {
-                        assertEquals(dockBoundsByThemeAndSelection[comparisonKey], dockBounds)
-                    }
-                    assertEquals(
-                        1,
-                        dockNodes.count {
-                            it.config.getOrNull(SemanticsProperties.EditableText) != null
-                        },
-                    )
-                    assertEquals(1, dockNodes.count { nodeText(it) == "Manual search" })
-                    assertFalse(dockNodes.any {
-                        nodeText(it) == "Manual search · invoice"
-                    })
-                    assertTrue(primaryNode.boundsInRoot.width >= 52f)
-                    assertTrue(primaryNode.boundsInRoot.height >= 52f)
-                    println(
-                        "RETAINED dark=$darkTheme $source selected=$selected " +
-                            "current=${retainedBounds.height}dp",
-                    )
-                    val themeName = if (darkTheme) "dark" else "light"
-                    saveRenderedFixture("retained-$themeName-$source-selected-$selected.png")
-                    visualOutputDirectory()?.let { directory ->
-                        directory.resolve("retained-measurements.txt").appendText(
-                            "$themeName $source selected=$selected " +
-                                "viewport=${retainedBounds.height}dp " +
-                                "query=${queryNode.boundsInRoot} " +
-                                "primary=${primaryNode.boundsInRoot}\n",
-                        )
-                    }
-
-                    saving.value = true
-                    measureCurrentComposition()
-                    assertEquals(retainedBounds, previewBounds.value)
-                    saving.value = false
-                    measureCurrentComposition()
-                    assertEquals(retainedBounds, previewBounds.value)
-                }
-            }
-        }
-    }
-
-    @Test
-    fun retainedDockKeepsSecondaryActionsReachableDuringShare() {
+    fun retainedActionBarRoutesEachActionAndReflectsShareAndCopyState() {
         val actions = mutableListOf<String>()
-        val preparing = mutableStateOf(false)
-        mount(360, 260) {
+        val sharePreparing = mutableStateOf(false)
+        val canCopy = mutableStateOf(true)
+        mount(360, 160) {
             LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                Surface(Modifier.fillMaxSize()) {
-                    FinderLiveDock(
-                        search = FinderSearchBar(
+                FloatingScannerActionBar(
+                    retainedActions(
+                        FinderSearchBar(
                             query = "invoice",
                             onQueryChange = {},
-                            activeListName = null,
-                            activeListTermCount = 0,
-                            matchMode = SearchMatchMode.Substring,
-                            saving = false,
                             searchListsLabel = "Lists",
                             onSearchLists = { actions += "lists" },
-                            onTerms = { actions += "terms" },
-                            onUseManual = {},
-                            onResults = { actions += "results" },
                         ),
-                        capture = FinderCaptureActions(
-                            captureLabel = null,
-                            captureEnabled = false,
-                            onCapture = {},
-                            pendingCaptureLabel = null,
-                            onCancelCapture = {},
-                            secondaryActionLabel = null,
-                            onSecondaryAction = {},
-                        ),
-                        resultsLabel = "Results (0)",
-                        onOccurrences = { actions += "occurrences" },
-                        returnLabel = "Resume scanning",
-                        onReturn = { actions += "return" },
-                        onShare = { actions += "share" },
-                        onCancelShare = { actions += "cancel" },
-                        sharePreparing = preparing.value,
-                    )
-                }
-            }
-        }
-
-        fun assertActionHasTouchSize(label: String) {
-            val node = nodes(composeRoot()).first { node ->
-                nodeText(node) == label &&
-                    node.config.getOrNull(SemanticsActions.OnClick) != null
-            }
-            assertTrue(node.boundsInRoot.width >= 48f, "$label width")
-            assertTrue(node.boundsInRoot.height >= 48f, "$label height")
-        }
-
-        assertActionHasTouchSize("Results (0)")
-        assertActionHasTouchSize("More")
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Resume scanning" })
-
-        preparing.value = true
-        measureCurrentComposition()
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Preparing image…" })
-        assertActionHasTouchSize("Cancel")
-        clickText("Cancel")
-        assertEquals("cancel", actions.last())
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Results (0)" })
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "More" })
-        saveRenderedFixture("retained-actions-manager-preparing-light.png")
-    }
-
-    @Test
-    fun retainedDockRoutesCompactActionsThroughProductionDispatcher() {
-        val actions = mutableListOf<String>()
-        val managerOpen = mutableStateOf(false)
-        val termsOpen = mutableStateOf(false)
-        val occurrencesOpen = mutableStateOf(false)
-        val sharePreparing = mutableStateOf(false)
-        val shareError = mutableStateOf(false)
-        val importedSource = mutableStateOf(false)
-        val editor = mutableStateOf(SearchListEditorState())
-        var transferRevision = 0
-        var clearFocusCalls = 0
-        var hideKeyboardCalls = 0
-        mount(360, 720) {
-            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                Surface(Modifier.fillMaxSize()) {
-                    Column {
-                        FinderLiveAppBar(onOptions = { actions += "options" })
-                        FinderLiveDock(
-                            search = FinderSearchBar(
-                                query = "invoice",
-                                onQueryChange = {},
-                                activeListName = null,
-                                activeListTermCount = 0,
-                                matchMode = SearchMatchMode.Substring,
-                                saving = false,
-                                searchListsLabel = if (managerOpen.value) {
-                                    "Close lists"
-                                } else {
-                                    "Lists"
-                                },
-                                onSearchLists = {
-                                    RetainedInspectionActionDispatcher.toggleLists(
-                                        managerOpen.value,
-                                        { transferRevision++ },
-                                        { managerOpen.value = it },
-                                        {},
-                                        { editor.value = editor.value.close() },
-                                    )
-                                },
-                                onTerms = {
-                                    RetainedInspectionActionDispatcher.showTerms(
-                                        { termsOpen.value = it },
-                                        { occurrencesOpen.value = it },
-                                    )
-                                },
-                                onUseManual = {},
-                                onResults = {},
-                            ),
-                            capture = FinderCaptureActions(
-                                captureLabel = null,
-                                captureEnabled = false,
-                                onCapture = {},
-                                pendingCaptureLabel = null,
-                                onCancelCapture = {},
-                                secondaryActionLabel = null,
-                                onSecondaryAction = {},
-                            ),
-                            resultsLabel = "Results (0)",
-                            onOccurrences = {
-                                RetainedInspectionActionDispatcher.showOccurrences(
-                                    { clearFocusCalls++ },
-                                    { hideKeyboardCalls++ },
-                                    { termsOpen.value = it },
-                                    { occurrencesOpen.value = it },
-                                )
-                            },
-                            returnLabel = if (importedSource.value) {
-                                "Return to camera"
-                            } else {
-                                "Resume scanning"
-                            },
-                            onReturn = {
-                                RetainedInspectionActionDispatcher.returnToSource(
-                                    imported = importedSource.value,
-                                    resetLiveArea = { actions += "reset" },
-                                    cancelImport = { actions += "cancelImport" },
-                                    resumeFrozen = { actions += "resumeFrozen" },
-                                )
-                            },
-                            onShare = { actions += "share" },
-                            onCancelShare = {
-                                sharePreparing.value = false
-                                actions += "cancelShare"
-                            },
+                        retainedControls(
+                            canCopy = canCopy.value,
                             sharePreparing = sharePreparing.value,
-                        )
-                        if (managerOpen.value) {
-                            FinderSearchLists(
-                                lists = listOf(SavedSearchList("a", "Alpha", listOf("invoice"))),
-                                activeListId = "a",
-                                editor = editor.value,
-                                canSave = !shareError.value,
-                                onNew = { editor.value = editor.value.startNew() },
-                                onSelect = { actions += "select:$it" },
-                                onEdit = {},
-                                onDelete = {},
-                                onNameChange = {},
-                                onTermsChange = {},
-                                onSave = {},
-                                onCancel = { editor.value = editor.value.close() },
-                            )
-                        }
-                        if (shareError.value) ContextMessage("Share failed", isError = true)
-                        if (termsOpen.value) Text("Terms dialog")
-                        if (occurrencesOpen.value) Text("Occurrences dialog")
-                    }
-                }
+                            onCopy = { actions += "copy" },
+                            onShare = { actions += "share" },
+                            onCancelShare = { actions += "cancelShare" },
+                            onCamera = { actions += "camera" },
+                        ),
+                    ),
+                )
             }
         }
 
-        assertEquals(0, transferRevision)
-        clickTextWithPopup("Results (0)")
-        assertTrue(occurrencesOpen.value)
-        assertFalse(termsOpen.value)
-        assertEquals(1, clearFocusCalls)
-        assertEquals(1, hideKeyboardCalls)
-        clickTextWithPopup("Terms")
-        assertTrue(termsOpen.value)
-        assertFalse(occurrencesOpen.value)
-        clickTextWithPopup("Results (0)")
-        assertTrue(occurrencesOpen.value)
-        assertEquals(2, clearFocusCalls)
-        assertEquals(2, hideKeyboardCalls)
-        clickTextWithPopup("Options")
-        assertEquals("options", actions.last())
-        assertEquals(0, transferRevision)
-        clickTextWithPopup("More")
-        clickPopupText("Share image")
-        assertEquals("share", actions.last())
-        assertEquals(0, transferRevision)
-        assertEquals(2, clearFocusCalls)
-        assertEquals(2, hideKeyboardCalls)
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Find text" })
-        clickTextWithPopup("More")
-        clickPopupText("Lists")
-        assertTrue(managerOpen.value)
-        assertEquals(1, transferRevision)
-        assertTrue(nodes(composeRoot()).any { nodeText(it).contains("Alpha") })
-        editor.value = editor.value.startNew()
-        measureCurrentComposition()
-        assertTrue(editor.value.isOpen)
-        clickTextWithPopup("More")
-        clickPopupText("Close lists")
-        assertFalse(managerOpen.value)
-        assertFalse(editor.value.isOpen)
-        assertEquals(2, transferRevision)
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Find text" })
+        // Share and Camera announce a fuller description in place of their short labels.
+        clickText("Lists")
+        clickText("Copy")
+        clickDescribed("Share image")
+        clickDescribed("Return to camera")
+        assertEquals(listOf("lists", "copy", "share", "camera"), actions)
 
         sharePreparing.value = true
         measureCurrentComposition()
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Preparing image…" })
-        clickTextWithPopup("Cancel")
-        assertFalse(sharePreparing.value)
-        shareError.value = true
+        assertFalse(
+            nodes(composeRoot()).any {
+                "Share image" in
+                    it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+            },
+        )
+        clickDescribed("Cancel share")
+        assertEquals("cancelShare", actions.last())
+
+        canCopy.value = false
         measureCurrentComposition()
-        assertTrue(nodes(composeRoot()).any { nodeText(it) == "Share failed" })
-        clickTextWithPopup("Resume scanning")
-        assertEquals(listOf("reset", "resumeFrozen"), actions.takeLast(2))
-        importedSource.value = true
-        advancePopupFrames()
-        clickTextWithPopup("Return to camera")
-        assertEquals(listOf("reset", "cancelImport"), actions.takeLast(2))
+        val copy = nodes(composeRoot()).first { nodeText(it) == "Copy" }
+        assertFalse(copy.isEnabled())
     }
 
     @Test
-    fun retainedControlsRenderInNarrowLargeTextAndLandscapeHiddenViewportFixtures() {
-        val fixtures = listOf(
-            Triple(320, 720, 1.4f) to false,
-            Triple(360, 640, 1.25f) to true,
-            Triple(800, 360, 1.25f) to false,
-        )
-        fixtures.forEachIndexed { index, (size, dark) ->
+    fun retainedViewportStaysPositiveAcrossThemesAndControlStates() {
+        val viewportByTheme = mutableMapOf<Boolean, Rect>()
+        listOf(false, true).forEach { darkTheme ->
             disposeComposition()
-            mount(size.first, size.second, fontScale = size.third) {
-                LiveTextFinderTheme(darkThemeOverride = dark, dynamicColor = false) {
-                    Surface(Modifier.fillMaxSize()) {
-                        FinderContentAssembly(
-                            scrollState = androidx.compose.foundation.ScrollState(0),
-                            scrollable = true,
-                            modifier = Modifier.fillMaxSize()
-                                .safeDrawingPadding()
-                                .imePadding(),
-                            topContent = {
-                                FinderLiveAppBar(onOptions = {})
-                                Column(Modifier.fillMaxWidth()) {}
-                            },
-                            managerContent = {},
-                            viewportContent = {},
-                            footerContent = {
-                                Column(
-                                    Modifier.fillMaxWidth().padding(
-                                        horizontal = FinderSpacing.large,
-                                        vertical = FinderSpacing.extraSmall,
-                                    ),
-                                    verticalArrangement = Arrangement
-                                        .spacedBy(FinderSpacing.extraSmall),
-                                ) {
-                                    StillInspectionControls(
-                                        matchCount = 0,
-                                        showMatchesAction = false,
-                                        zoom = 1f,
-                                        canZoom = false,
-                                        onZoomIn = {},
-                                        onZoomOut = {},
-                                        onReset = {},
-                                        onMatches = {},
-                                    )
-                                }
-                                FinderLiveDock(
-                                    search = FinderSearchBar(
-                                        query = "invoice",
-                                        onQueryChange = {},
-                                        activeListName = "Monthly invoice archive",
-                                        activeListTermCount = 12,
-                                        matchMode = SearchMatchMode.Substring,
-                                        saving = false,
-                                        searchListsLabel = "Lists",
-                                        onSearchLists = {},
-                                        onTerms = {},
-                                        onUseManual = {},
-                                        onResults = {},
-                                    ),
-                                    capture = FinderCaptureActions(
-                                        captureLabel = null,
-                                        captureEnabled = false,
-                                        onCapture = {},
-                                        pendingCaptureLabel = null,
-                                        onCancelCapture = {},
-                                        secondaryActionLabel = null,
-                                        onSecondaryAction = {},
-                                    ),
-                                    resultsLabel = "Results (0)",
-                                    returnLabel = "Resume scanning",
-                                    onCancelShare = {},
-                                )
+            val viewportBounds = mutableStateOf<Rect?>(null)
+            val sharePreparing = mutableStateOf(false)
+            val matchCount = mutableIntStateOf(0)
+            val listName = mutableStateOf<String?>(null)
+            mount(360, 800) {
+                LiveTextFinderTheme(darkThemeOverride = darkTheme, dynamicColor = false) {
+                    RetainedScanner(
+                        search = FinderSearchBar(
+                            query = "invoice",
+                            onQueryChange = {},
+                            searchListsLabel = "Lists",
+                            onSearchLists = {},
+                            activeListName = listName.value,
+                        ),
+                        controls = retainedControls(
+                            matchCount = matchCount.intValue,
+                            position = if (matchCount.intValue > 0) 1 else 0,
+                            canCopy = matchCount.intValue > 0,
+                            sharePreparing = sharePreparing.value,
+                        ),
+                    ) { modifier ->
+                        Box(
+                            modifier.onGloballyPositioned {
+                                viewportBounds.value = it.boundsInRoot()
                             },
                         )
                     }
                 }
             }
-            val labels = nodes(composeRoot()).map(::nodeText)
-            listOf(
-                "Find text",
-                "Terms",
-                "Resume scanning",
-                "Results (0)",
-                "More",
-                "Zoom in",
-                "Zoom out",
-                "Reset view",
-            ).forEach { label -> assertTrue(labels.any { it == label }, "fixture $index: $label") }
-            saveRenderedFixture("retained-hidden-$index-${size.first}x${size.second}.png")
+            val initial = checkNotNull(viewportBounds.value)
+            assertTrue(initial.width > 0f)
+            assertTrue(initial.height >= 400f)
+            assertFalse(nodes(composeRoot()).any { nodeText(it) == "1 of 2" })
+
+            matchCount.intValue = 2
+            measureCurrentComposition()
+            assertTrue(nodes(composeRoot()).any { nodeText(it) == "1 of 2" })
+            assertEquals(initial, viewportBounds.value)
+
+            sharePreparing.value = true
+            measureCurrentComposition()
+            assertEquals(initial, viewportBounds.value)
+
+            listName.value = "Suppliers"
+            measureCurrentComposition()
+            assertEquals(initial, viewportBounds.value)
+
+            val search = taggedNode("floating-live-search").boundsInRoot
+            val actionBar = taggedNode("floating-live-action-bar").boundsInRoot
+            assertTrue(initial.bottom <= search.top)
+            assertTrue(search.bottom <= actionBar.top)
+            assertTrue(actionBar.bottom <= 800f)
+            listOf("Zoom out", "Zoom in", "Previous", "Next", "Settings").forEach { label ->
+                val bounds = describedNode(label).boundsInRoot
+                assertTrue(bounds.width >= 48f && bounds.height >= 48f, label)
+            }
+            viewportByTheme[darkTheme] = initial
         }
+        assertEquals(viewportByTheme[false], viewportByTheme[true])
+    }
+
+    @Test
+    fun matchSteppingKeepsViewportAndZoomAtLargeText() {
+        val position = mutableIntStateOf(1)
+        val viewport = mutableStateOf(IntSize.Zero)
+        var transform = StillViewTransform()
+        var setTransform: (StillViewTransform) -> Unit = {}
+        mount(320, 480, fontScale = 1.5f) {
+            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
+                var currentTransform by rememberStillViewTransform("import:1", viewport.value)
+                transform = currentTransform
+                setTransform = { currentTransform = it }
+                RetainedScanner(
+                    search = FinderSearchBar(
+                        query = "ID",
+                        onQueryChange = {},
+                        searchListsLabel = "Lists",
+                        onSearchLists = {},
+                        activeListName = "A long saved search list name with enough words to wrap",
+                    ),
+                    controls = retainedControls(
+                        zoom = currentTransform.zoom,
+                        position = position.intValue,
+                        matchCount = 2,
+                        onPrevious = { position.intValue = 1 },
+                        onNext = { position.intValue = 2 },
+                    ),
+                ) { modifier ->
+                    Box(modifier.onSizeChanged { viewport.value = it })
+                }
+            }
+        }
+        val initialViewport = viewport.value
+        assertTrue(initialViewport.width > 0 && initialViewport.height > 0)
+        setTransform(StillViewTransform(zoom = 2f))
+        measureCurrentComposition()
+        assertEquals(2f, transform.zoom)
+        assertTrue(nodes(composeRoot()).any { nodeText(it) == "2.0×" })
+        assertFalse(describedNode("Previous").isEnabled())
+
+        clickDescribed("Next")
+        assertTrue(nodes(composeRoot()).any { nodeText(it) == "2 of 2" })
+        assertFalse(describedNode("Next").isEnabled())
+        assertEquals(initialViewport, viewport.value)
+        assertEquals(2f, transform.zoom)
+
+        clickDescribed("Previous")
+        assertTrue(nodes(composeRoot()).any { nodeText(it) == "1 of 2" })
+        assertEquals(initialViewport, viewport.value)
+        assertEquals(2f, transform.zoom)
     }
 
     @Test
@@ -847,115 +407,6 @@ class StillInspectionUiTest {
         } finally {
             rendered.recycle()
         }
-    }
-
-    @Test
-    fun compactLargeTextNavigationControlsRenderInLightAndDarkThemes() {
-        var nextClicks = 0
-        mount(240, 360, fontScale = 1.5f) {
-            Column(Modifier.fillMaxSize()) {
-                LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                    Surface(Modifier.weight(1f)) {
-                        StillMatchNavigationControls(
-                            position = 1,
-                            count = 4,
-                            matchedTerm = "invoice",
-                            matchedText = "Invoice 802",
-                            canLocate = true,
-                            onPrevious = {},
-                            onNext = { nextClicks++ },
-                            onCopy = {},
-                        )
-                    }
-                }
-                LiveTextFinderTheme(darkThemeOverride = true, dynamicColor = false) {
-                    Surface(Modifier.weight(1f)) {
-                        StillMatchNavigationControls(
-                            position = 4,
-                            count = 4,
-                            matchedTerm = "invoice",
-                            matchedText = "invoice 910",
-                            canLocate = true,
-                            onPrevious = {},
-                            onNext = {},
-                            onCopy = {},
-                        )
-                    }
-                }
-            }
-        }
-
-        val nodes = nodes(composeRoot())
-        val previous = nodes.first { nodeText(it) == "Previous" }
-        assertNotNull(previous.config.getOrNull(SemanticsProperties.Disabled))
-        val next = nodes.first { nodeText(it) == "Next" }
-        assertTrue(checkNotNull(next.config.getOrNull(SemanticsActions.OnClick)?.action)())
-        assertEquals(1, nextClicks)
-        assertTrue(nodes.any { nodeText(it).contains("invoice: Invoice 802") })
-        assertTrue(
-            nodes.any {
-                it.config.getOrNull(SemanticsProperties.ContentDescription)
-                    ?.any { description -> description.contains("Invoice 802") } == true
-            },
-        )
-        saveRenderedFixture("still-navigation-light-dark-compact-large-text.png")
-    }
-
-    @Test
-    fun navigationCaptionKeepsViewportAndFocusedTransformAcrossSavedListTerms() {
-        val longTerm = mutableStateOf(false)
-        val viewport = mutableStateOf(IntSize.Zero)
-        var transform = StillViewTransform()
-        var setTransform: (StillViewTransform) -> Unit = {}
-        mount(320, 480, fontScale = 1.5f) {
-            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                var currentTransform by rememberStillViewTransform("import:1", viewport.value)
-                transform = currentTransform
-                setTransform = { currentTransform = it }
-                FinderContentAssembly(
-                    scrollState = androidx.compose.foundation.ScrollState(0),
-                    scrollable = false,
-                    modifier = Modifier.fillMaxSize(),
-                    topContent = {},
-                    managerContent = {},
-                    viewportContent = {
-                        Surface(
-                            Modifier.weight(1f).fillMaxWidth()
-                                .onSizeChanged { viewport.value = it },
-                        ) {}
-                    },
-                    footerContent = {
-                        StillMatchNavigationControls(
-                            position = if (longTerm.value) 2 else 1,
-                            count = 2,
-                            matchedTerm = if (longTerm.value) {
-                                "A long saved search list term with enough words to wrap"
-                            } else {
-                                "ID"
-                            },
-                            matchedText = "ID",
-                            canLocate = true,
-                            onPrevious = { longTerm.value = false },
-                            onNext = { longTerm.value = true },
-                            onCopy = {},
-                        )
-                    },
-                )
-            }
-        }
-        val initialViewport = viewport.value
-        setTransform(StillViewTransform(zoom = 2f))
-        measureCurrentComposition()
-        assertEquals(2f, transform.zoom)
-        clickText("Next")
-        measureCurrentComposition()
-        assertEquals(initialViewport, viewport.value)
-        assertEquals(2f, transform.zoom)
-        clickText("Previous")
-        measureCurrentComposition()
-        assertEquals(initialViewport, viewport.value)
-        assertEquals(2f, transform.zoom)
-        saveRenderedFixture("still-navigation-stable-viewport-large-text.png")
     }
 
     @Test
@@ -1309,73 +760,6 @@ class StillInspectionUiTest {
     }
 
     @Test
-    fun zoomResetAndMatchControlsRemainAccessibleAtLargeFontAndCompactWidth() {
-        val transform = mutableStateOf(StillViewTransform())
-        val viewportWidth = 220f
-        val viewportHeight = 180f
-        val fit = FrozenFrameFit(100, 100, 0, viewportWidth, viewportHeight)
-        val center = PreviewPoint(viewportWidth / 2f, viewportHeight / 2f)
-        mount(220, 180, fontScale = 1.5f) {
-            LiveTextFinderTheme(darkThemeOverride = false, dynamicColor = false) {
-                StillInspectionControls(
-                    matchCount = 2,
-                    zoom = transform.value.zoom,
-                    canZoom = true,
-                    onZoomIn = {
-                        transform.value = transform.value.zoomBy(
-                            1.25f,
-                            center,
-                            viewportWidth,
-                            viewportHeight,
-                            fit,
-                        )
-                    },
-                    onZoomOut = {
-                        transform.value = transform.value.zoomBy(
-                            0.8f,
-                            center,
-                            viewportWidth,
-                            viewportHeight,
-                            fit,
-                        )
-                    },
-                    onReset = { transform.value = transform.value.reset() },
-                    onMatches = {
-                    },
-                )
-            }
-        }
-
-        fun action(text: String): SemanticsNode = nodes(composeRoot()).first { node ->
-            nodeText(node) == text && node.config.getOrNull(SemanticsActions.OnClick) != null
-        }
-
-        assertTrue(action("Zoom in").config.getOrNull(SemanticsProperties.Disabled) == null)
-        assertNotNull(action("Zoom out").config.getOrNull(SemanticsProperties.Disabled))
-        assertNotNull(action("Reset view").config.getOrNull(SemanticsProperties.Disabled))
-        assertTrue(action("Matches (2)").config.getOrNull(SemanticsProperties.Disabled) == null)
-        listOf("Zoom in", "Zoom out", "Reset view", "Matches (2)").forEach { label ->
-            val bounds = action(label).boundsInRoot
-            assertTrue(bounds.width >= 48f && bounds.height >= 48f)
-            assertTrue(bounds.right <= viewportWidth && bounds.bottom <= viewportHeight)
-        }
-
-        val zoomIn = checkNotNull(
-            action("Zoom in").config.getOrNull(SemanticsActions.OnClick)?.action,
-        )
-        assertTrue(zoomIn())
-        measureCurrentComposition()
-        assertTrue(action("Zoom out").config.getOrNull(SemanticsProperties.Disabled) == null)
-        assertTrue(action("Reset view").config.getOrNull(SemanticsProperties.Disabled) == null)
-        val reset = checkNotNull(
-            action("Reset view").config.getOrNull(SemanticsActions.OnClick)?.action,
-        )
-        assertTrue(reset())
-        measureCurrentComposition()
-        assertNotNull(action("Zoom out").config.getOrNull(SemanticsProperties.Disabled))
-    }
-
-    @Test
     fun dialogSelectionEnablesCopyAndUsesScrollableOccurrenceRows() {
         val darkTheme = mutableStateOf(false)
         val contentVisible = mutableStateOf(true)
@@ -1491,7 +875,7 @@ class StillInspectionUiTest {
         assertNotNull(disabledShow.config.getOrNull(SemanticsProperties.Disabled))
         assertDialogActionSize("Copy matched text", 48f)
         assertDialogActionSize("Copy line", 48f)
-        assertDialogActionSize("Show on image", 52f)
+        assertDialogActionSize("Show on image", 48f)
         assertDialogActionSize("Cancel", 48f)
         assertTrue(
             nodes(dialogRoot).any { node -> nodeText(node) == "50 matches" },
@@ -1542,7 +926,7 @@ class StillInspectionUiTest {
         measureCurrentComposition()
         assertDialogActionSize("Copy matched text", 48f)
         assertDialogActionSize("Copy line", 48f)
-        assertDialogActionSize("Show on image", 52f)
+        assertDialogActionSize("Show on image", 48f)
         assertDialogActionSize("Cancel", 48f)
         saveDialog("still-matches-dialog-dark-large-text.png")
         assertTrue(
@@ -1703,6 +1087,81 @@ class StillInspectionUiTest {
         return action
     }
 
+    @Composable
+    private fun RetainedScanner(
+        search: FinderSearchBar,
+        controls: FloatingRetainedControls,
+        viewport: @Composable (Modifier) -> Unit,
+    ) {
+        FloatingLiveScanner(
+            searchBar = search,
+            liveControls = remember { LiveCaptureControls({ false }, { false }) },
+            captureEnabled = false,
+            freezePending = false,
+            onFreeze = {},
+            onCancelFreeze = {},
+            areaEnabled = false,
+            onArea = {},
+            importEnabled = false,
+            importPending = false,
+            onImport = {},
+            onCancelImport = {},
+            onMatchMode = {},
+            onOptions = {},
+            statusLabel = "Frozen frame",
+            onStatus = {},
+            snackbarHostState = remember { SnackbarHostState() },
+            retained = controls,
+            retainedViewport = viewport,
+        )
+    }
+
+    private fun retainedControls(
+        zoom: Float = 1f,
+        position: Int = 1,
+        matchCount: Int = 2,
+        canCopy: Boolean = true,
+        sharePreparing: Boolean = false,
+        onPrevious: () -> Unit = {},
+        onNext: () -> Unit = {},
+        onCopy: () -> Unit = {},
+        onShare: () -> Unit = {},
+        onCancelShare: () -> Unit = {},
+        onCamera: () -> Unit = {},
+    ) = FloatingRetainedControls(
+        zoom = zoom,
+        canZoom = true,
+        position = position,
+        matchCount = matchCount,
+        canNavigate = true,
+        canCopy = canCopy,
+        sharePreparing = sharePreparing,
+        onZoom = {},
+        onPrevious = onPrevious,
+        onNext = onNext,
+        onCopy = onCopy,
+        onShare = onShare,
+        onCancelShare = onCancelShare,
+        onCamera = onCamera,
+    )
+
+    private fun describedNode(description: String): SemanticsNode =
+        nodes(composeRoot()).first { node ->
+            description in node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+        }
+
+    private fun taggedNode(tag: String): SemanticsNode =
+        nodes(composeRoot()).first { it.config.getOrNull(SemanticsProperties.TestTag) == tag }
+
+    private fun SemanticsNode.isEnabled(): Boolean =
+        config.getOrNull(SemanticsProperties.Disabled) == null
+
+    private fun clickDescribed(description: String) {
+        val node = describedNode(description)
+        assertTrue(checkNotNull(node.config.getOrNull(SemanticsActions.OnClick)?.action)())
+        measureCurrentComposition()
+    }
+
     private fun mount(
         widthDp: Int,
         heightDp: Int,
@@ -1769,55 +1228,12 @@ class StillInspectionUiTest {
         measureCurrentComposition()
     }
 
-    private fun clickPopupText(text: String) {
-        val mainRoot = composeRoot()
-        val node = popupRoots().asSequence()
-            .filter { root -> root !== mainRoot }
-            .flatMap { nodes(it).asSequence() }
-            .first { popupNode ->
-                nodeText(popupNode) == text &&
-                    popupNode.config.getOrNull(SemanticsActions.OnClick) != null
-            }
-        assertTrue(checkNotNull(node.config.getOrNull(SemanticsActions.OnClick)?.action)())
-        advancePopupFrames()
-    }
-
-    private fun clickTextWithPopup(text: String) {
-        val node = nodes(composeRoot()).first { node ->
-            nodeText(node) == text && node.config.getOrNull(SemanticsActions.OnClick) != null
-        }
-        assertTrue(checkNotNull(node.config.getOrNull(SemanticsActions.OnClick)?.action)())
-        advancePopupFrames()
-    }
-
-    private fun advancePopupFrames() {
-        Snapshot.sendApplyNotifications()
-        repeat(8) {
-            checkNotNull(frameClock).sendFrame(frameTimeNanos)
-            frameTimeNanos += 16_000_000L
-            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
-            composeView?.let { view ->
-                view.measure(
-                    View.MeasureSpec.makeMeasureSpec(fixtureWidth, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(fixtureHeight, View.MeasureSpec.EXACTLY),
-                )
-                view.layout(0, 0, fixtureWidth, fixtureHeight)
-                runCatching { findViewRoot(view).measureAndLayoutForTest() }
-            }
-            popupRoots().forEach { runCatching { it.measureAndLayoutForTest() } }
-        }
-    }
-
     private fun popupRoots(): List<ViewRootForTest> {
         val windowManager = checkNotNull(activity).getSystemService(WindowManager::class.java)
         val shadowWindowManager = Shadow.extract<ShadowWindowManagerImpl>(windowManager)
         return shadowWindowManager.views.mapNotNull { view ->
             runCatching { findViewRoot(view) }.getOrNull()
         }.distinct()
-    }
-
-    private fun saveRenderedFixture(fileName: String) {
-        assertTrue(writeVisualScreenshot(checkNotNull(composeView), fileName))
     }
 
     private fun findViewRoot(view: View): ViewRootForTest = when (view) {

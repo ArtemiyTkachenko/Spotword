@@ -130,6 +130,17 @@ class FloatingScannerScreenshotTest {
     }
 
     @Test
+    fun searchFieldActiveList() = capture("floating-scanner-search-field", state = "active-list") {
+        FloatingScannerSearchField(
+            query = "",
+            onQueryChange = {},
+            wholeWords = false,
+            onWholeWordsChange = {},
+            activeListName = "Shopping list",
+        )
+    }
+
+    @Test
     fun searchFieldSubstring() = capture("floating-scanner-search-field", state = "substring") {
         FloatingScannerSearchField(
             query = "",

@@ -32,6 +32,96 @@ class SavedSearchEditingStateTest {
     }
 
     @Test
+    fun dismissDirtyDraft_requiresConfirmationAndKeepsDraftOnCancel() {
+        state.toggle()
+        state.startNewList()
+        state.updateDraftName("Fruit")
+        val draft = state.editor
+        val revision = state.contextRevision
+
+        state.requestDismiss()
+        assertTrue(state.isDiscardConfirmationOpen)
+        assertTrue(state.isOpen)
+        assertEquals(draft, state.editor)
+        assertEquals(revision, state.contextRevision)
+
+        state.keepEditing()
+        assertFalse(state.isDiscardConfirmationOpen)
+        assertEquals(draft, state.editor)
+
+        state.toggle()
+        state.confirmDiscard()
+        assertFalse(state.isOpen)
+        assertFalse(state.editor.isOpen)
+        assertFalse(state.isDiscardConfirmationOpen)
+        assertEquals(revision + 1, state.contextRevision)
+        assertTrue(session.state.value.persisted.lists.isEmpty())
+    }
+
+    @Test
+    fun selectFromSheet_checksDirtyDraftBeforeSwitchingAndClosing() {
+        val first = saveList("Fruit", "apple")
+        state.startNewList()
+        state.updateDraftName("Parts")
+        state.updateDraftTerms("bolt")
+        state.saveDraft()
+        val second = session.state.value.persisted.lists.last().id
+        state.toggle()
+        state.startNewList()
+        state.updateDraftName("Unsaved")
+
+        state.selectFromSheet("missing")
+        assertFalse(state.isDiscardConfirmationOpen)
+        state.selectFromSheet(second)
+        state.keepEditing()
+        assertEquals(first, session.state.value.persisted.activeListId)
+        assertTrue(state.isOpen)
+        assertEquals("Unsaved", state.editor.name)
+
+        state.selectFromSheet(second)
+        state.confirmDiscard()
+        assertEquals(second, session.state.value.persisted.activeListId)
+        assertFalse(state.isOpen)
+        assertFalse(state.editor.isOpen)
+    }
+
+    @Test
+    fun unchangedEdit_allowsSelectionOfAlreadyActiveListAndClosesSheet() {
+        val id = saveList("Fruit", "apple")
+        state.toggle()
+        state.editList(session.state.value.persisted.lists.single())
+        state.updateDraftName("Fruit")
+
+        state.selectFromSheet(id)
+
+        assertFalse(state.isDiscardConfirmationOpen)
+        assertFalse(state.isOpen)
+        assertFalse(state.editor.isOpen)
+        assertEquals(id, session.state.value.persisted.activeListId)
+    }
+
+    @Test
+    fun replacingDirtyDraft_requiresConfirmationForNewAndEdit() {
+        saveList("Fruit", "apple")
+        val saved = session.state.value.persisted.lists.single()
+        state.toggle()
+        state.startNewList()
+        state.updateDraftName("Unsaved")
+
+        state.startNewList()
+        assertTrue(state.isDiscardConfirmationOpen)
+        assertEquals("Unsaved", state.editor.name)
+        state.keepEditing()
+        state.editList(saved)
+        assertTrue(state.isDiscardConfirmationOpen)
+        assertEquals("Unsaved", state.editor.name)
+        state.confirmDiscard()
+        assertEquals(saved.id, state.editor.editingId)
+        assertEquals(saved.name, state.editor.name)
+        assertTrue(state.isOpen)
+    }
+
+    @Test
     fun importedDraft_opensManagerWithoutNotifyingTransferOwner() {
         state.acceptImportedDraft("Fruit", listOf("apple", "pear"))
 

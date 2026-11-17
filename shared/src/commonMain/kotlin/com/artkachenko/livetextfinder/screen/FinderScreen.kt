@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntSize
+import com.artkachenko.livetextfinder.AppAppearance
 import com.artkachenko.livetextfinder.camera.FreezeMode
 import com.artkachenko.livetextfinder.camera.ImageShareStatus
 import com.artkachenko.livetextfinder.camera.LiveSearchAreaLifecycle
@@ -30,6 +31,9 @@ import com.artkachenko.livetextfinder.lists.SavedSearchEditingState
 import com.artkachenko.livetextfinder.lists.SearchListTransferContextEffect
 import com.artkachenko.livetextfinder.ocr.OcrUiState
 import com.artkachenko.livetextfinder.ocr.isCameraRunning
+import com.artkachenko.livetextfinder.onboarding.OnboardingHint
+import com.artkachenko.livetextfinder.onboarding.OnboardingHintMessage
+import com.artkachenko.livetextfinder.onboarding.rememberOnboardingHints
 import com.artkachenko.livetextfinder.scanarea.LiveAreaBackHandler
 import com.artkachenko.livetextfinder.scanarea.LiveSearchAreaState
 import com.artkachenko.livetextfinder.scanarea.ScanAreaEditBar
@@ -37,13 +41,11 @@ import com.artkachenko.livetextfinder.search.SearchSessionController
 import com.artkachenko.livetextfinder.search.rememberSearchListTransferOwner
 import com.artkachenko.livetextfinder.status.FinderStatusRegion
 import com.artkachenko.livetextfinder.ui.ContextMessage
-import com.artkachenko.livetextfinder.ui.FinderCaptureActions
 import com.artkachenko.livetextfinder.ui.FinderSearchBar
-import com.artkachenko.livetextfinder.ui.FinderSearchLists
 import com.artkachenko.livetextfinder.ui.RetainedInspectionActionDispatcher
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.capture_cancel_import
-import livetextfinder.shared.generated.resources.search_list_transfer_cancel
+import livetextfinder.shared.generated.resources.inspection_lists
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -55,7 +57,11 @@ import org.jetbrains.compose.resources.stringResource
  * through [FinderSourceContext] where a callback must compare against current state.
  */
 @Composable
-internal fun FinderScreen(session: SearchSessionController) {
+internal fun FinderScreen(
+    session: SearchSessionController,
+    appearance: AppAppearance,
+    onAppearanceChange: (AppAppearance) -> Unit,
+) {
     var ocrState by remember { mutableStateOf(OcrUiState()) }
     val sessionState = session.state.value
     val activeSearch = sessionState.activeSearch
@@ -71,13 +77,11 @@ internal fun FinderScreen(session: SearchSessionController) {
         SavedSearchEditingState(session, transferOwner::contextChanged)
     }
     SearchListTransferContextEffect(transferOwner, session, sessionState, searchEditing)
-    val transferState = transferOwner.state.value
 
     val liveArea = remember { LiveSearchAreaState() }
     LiveSearchAreaLifecycle(liveArea::reset)
     val viewportState = remember { mutableStateOf(IntSize.Zero) }
-    val rootSizeState = remember { mutableStateOf(IntSize.Zero) }
-    val context = finderSourceContext(session, searchEditing, liveArea, rootSizeState)
+    val context = finderSourceContext(session, searchEditing, liveArea)
     val shareOwner = rememberImageShareOwner()
     val importedState = context.importedOwner.state.value
     val freezeState = context.frozenOwner.state.value
@@ -132,16 +136,6 @@ internal fun FinderScreen(session: SearchSessionController) {
     }
 
     val dialogs = rememberFinderDialogsState(activeSearch.identity)
-    val labels = finderLabels(
-        importedPhase = importedState.phase,
-        freezeMode = freezeState.mode,
-        stillSource = stillSource,
-        areaSelected = liveArea.area != null,
-        managerOpen = searchEditing.isOpen,
-        hasSearch = selectedList != null || search.query.isNotEmpty(),
-        resultsAvailable = searchState.resultsAvailable,
-        occurrenceCount = search.occurrences.size,
-    )
     val actions = FinderSourceActions(
         context = context,
         liveArea = liveArea,
@@ -158,7 +152,7 @@ internal fun FinderScreen(session: SearchSessionController) {
         activeListTermCount = selectedList?.terms?.size ?: 0,
         matchMode = activeSearch.matchMode,
         saving = sessionState.saving,
-        searchListsLabel = labels.searchLists,
+        searchListsLabel = stringResource(Res.string.inspection_lists),
         onSearchLists = searchEditing::toggle,
         onTerms = {
             RetainedInspectionActionDispatcher.showTerms(
@@ -169,19 +163,24 @@ internal fun FinderScreen(session: SearchSessionController) {
         onUseManual = { searchEditing.selectList(null) },
         onResults = { dialogs.termResultsOpen = true },
     )
-    val captureActions = FinderCaptureActions(
-        captureLabel = labels.capture,
-        captureEnabled = actions.captureEnabled,
-        onCapture = actions::capture,
-        pendingCaptureLabel = labels.pendingCapture,
-        onCancelCapture = actions::cancelCapture,
-        secondaryActionLabel = labels.secondaryAction,
-        onSecondaryAction = actions::leaveOrCancelImport,
-    )
-    val layoutMode = finderLayoutMode(
-        hasStillSource = stillSource != null,
-        managerOpen = searchEditing.isOpen,
-        areaEditing = areaEditing,
+    val layoutMode = finderLayoutMode(stillSource != null, areaEditing)
+    val hints = rememberOnboardingHints()
+    val hasQuery = activeSearch.terms.any { term -> term.text.isNotBlank() }
+    LaunchedEffect(hasQuery) {
+        if (hasQuery) {
+            hints.markSeen(OnboardingHint.Search)
+        }
+    }
+    LaunchedEffect(searchEditing.isOpen) {
+        if (searchEditing.isOpen) {
+            hints.markSeen(OnboardingHint.Lists)
+        }
+    }
+    val onboardingHint = hints.next(
+        cameraRunning = layoutMode == FinderLayoutMode.Live && !searchEditing.isOpen &&
+            ocrState.status.isCameraRunning,
+        hasQuery = hasQuery,
+        hasMatches = search.occurrences.isNotEmpty(),
     )
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -191,13 +190,7 @@ internal fun FinderScreen(session: SearchSessionController) {
         shareState = shareOwner.state,
         transferState = transferOwner.state,
     )
-    val floatingLive = layoutMode == FinderLayoutMode.Live
-    val recognitionDetailsAvailable = importedState.phase.allowsLiveCamera &&
-        freezeState.mode == FreezeMode.Live
-    LaunchedEffect(floatingLive, recognitionDetailsAvailable) {
-        if (!floatingLive || !recognitionDetailsAvailable) dialogs.recognitionDetailsOpen = false
-    }
-    val floatingViewport = floatingLive || layoutMode == FinderLayoutMode.AreaEditing
+    val floatingRetained = layoutMode == FinderLayoutMode.StillInspection
     val viewport: @Composable (Modifier) -> Unit = { modifier ->
         FinderViewport(
             inspection = inspection,
@@ -212,11 +205,13 @@ internal fun FinderScreen(session: SearchSessionController) {
             areaEditing = areaEditing,
             areaGestureEnabled = areaGestureEnabled,
             modifier = modifier,
-            showLegacyLiveControls = !floatingViewport,
         )
     }
-    val status: @Composable ((@Composable (String, @Composable () -> Unit) -> Unit)?) -> Unit =
-        { floatingContent ->
+    Box(Modifier.fillMaxSize()) {
+        if (!floatingRetained) {
+            viewport(Modifier.fillMaxSize())
+        }
+        if (layoutMode != FinderLayoutMode.AreaEditing) {
             FinderStatusRegion(
                 state = ocrState,
                 importedState = importedState,
@@ -227,126 +222,84 @@ internal fun FinderScreen(session: SearchSessionController) {
                 highlights = searchState.highlights,
                 resultsAvailable = searchState.resultsAvailable,
                 areaSelected = liveArea.area != null,
-                shouldShowViews = shouldShowViews,
-                liveStageBand = shouldShowViews && layoutMode.isLiveCamera,
-                floatingContent = floatingContent,
-                floatingDetailsOpen = floatingLive && dialogs.recognitionDetailsOpen,
-                onDismissFloatingDetails = { dialogs.recognitionDetailsOpen = false },
+                showSavedSearchMessages = !searchEditing.isOpen,
                 onRetrySavedData = searchEditing::retrySavedSearches,
                 onRequestReset = { dialogs.resetConfirmOpen = true },
-            )
-        }
-    if (floatingViewport) {
-        Box(Modifier.fillMaxSize()) {
-            viewport(Modifier.fillMaxSize())
-            if (floatingLive) {
-                status { label, messages ->
-                    FloatingLiveScanner(
-                        searchBar = searchBar,
-                        liveControls = context.liveCaptureControls,
-                        captureEnabled = actions.captureEnabled &&
-                            importedState.phase.allowsLiveCamera,
-                        freezePending = freezeState.mode == FreezeMode.Freezing,
-                        onFreeze = actions::capture,
-                        onCancelFreeze = actions::cancelCapture,
-                        areaEnabled = labels.liveArea != null,
-                        onArea = actions::startAreaEditing,
-                        importEnabled = importedState.phase.allowsLiveCamera,
-                        importPending = importedState.phase.isImportInProgress,
-                        onImport = actions::beginImport,
-                        onCancelImport = actions::leaveOrCancelImport,
-                        onMatchMode = searchEditing::setMatchMode,
-                        onOptions = { dialogs.optionsOpen = true },
-                        statusLabel = label,
-                        onStatus = searchBar.onTerms,
-                        snackbarHostState = snackbarHostState,
-                        matchModeEnabled = sessionState.loaded && !sessionState.recoveryRequired,
-                        messages = {
-                            val transferMessage = transferState.message
-                            if (transferState.busy && transferMessage != null) {
-                                ContextMessage(
-                                    message = transferMessage,
-                                    actionLabel = stringResource(
-                                        Res.string.search_list_transfer_cancel,
-                                    ),
-                                    onAction = transferOwner::cancel,
-                                    floating = true,
-                                )
-                            }
-                            messages()
-                            if (importedState.phase.isImportInProgress) {
-                                ContextMessage(
-                                    message = label,
-                                    actionLabel = stringResource(Res.string.capture_cancel_import),
-                                    onAction = actions::leaveOrCancelImport,
-                                    floating = true,
-                                )
-                            }
-                        },
-                    )
-                }
-            } else {
-                Column(Modifier.align(Alignment.BottomCenter).safeDrawingPadding()) {
-                    SnackbarHost(snackbarHostState, Modifier.fillMaxWidth())
-                    ScanAreaEditBar(liveArea, editorDraft?.token ?: 0L, context, floating = true)
-                }
+            ) { label, messages ->
+                FloatingLiveScanner(
+                    searchBar = searchBar,
+                    liveControls = context.liveCaptureControls,
+                    captureEnabled = actions.captureEnabled &&
+                        importedState.phase.allowsLiveCamera,
+                    freezePending = freezeState.mode == FreezeMode.Freezing,
+                    onFreeze = actions::capture,
+                    onCancelFreeze = actions::cancelCapture,
+                    areaEnabled = importedState.phase.allowsLiveCamera &&
+                        freezeState.mode == FreezeMode.Live && liveSearchAreaAvailable(),
+                    areaSelected = liveArea.area != null,
+                    onArea = actions::startAreaEditing,
+                    importEnabled = importedState.phase.allowsLiveCamera,
+                    importPending = importedState.phase.isImportInProgress,
+                    onImport = actions::beginImport,
+                    onCancelImport = actions::leaveOrCancelImport,
+                    onMatchMode = searchEditing::setMatchMode,
+                    onOptions = { dialogs.optionsOpen = true },
+                    statusLabel = label,
+                    onStatus = {
+                        hints.markSeen(OnboardingHint.Results)
+                        searchBar.onTerms()
+                    },
+                    snackbarHostState = snackbarHostState.takeUnless { searchEditing.isOpen },
+                    listsOpen = searchEditing.isOpen,
+                    matchModeEnabled = sessionState.loaded && !sessionState.recoveryRequired,
+                    retained = if (floatingRetained) {
+                        floatingRetainedControls(
+                            inspection,
+                            searchState.resultsAvailable,
+                            shareOwner.state.value.status == ImageShareStatus.Preparing,
+                            actions,
+                        )
+                    } else {
+                        null
+                    },
+                    retainedViewport = viewport,
+                    messages = {
+                        messages()
+                        if (importedState.phase.isImportInProgress) {
+                            ContextMessage(
+                                message = label,
+                                actionLabel = stringResource(Res.string.capture_cancel_import),
+                                onAction = actions::leaveOrCancelImport,
+                                floating = true,
+                            )
+                        }
+                        if (onboardingHint != null) {
+                            OnboardingHintMessage(
+                                hint = onboardingHint,
+                                onDismiss = { hints.markSeen(onboardingHint) },
+                            )
+                        }
+                    },
+                )
+            }
+        } else {
+            Column(Modifier.align(Alignment.BottomCenter).safeDrawingPadding()) {
+                SnackbarHost(snackbarHostState, Modifier.fillMaxWidth())
+                ScanAreaEditBar(liveArea, editorDraft?.token ?: 0L, context, floating = true)
             }
         }
-    } else {
-        FinderStackedContent(
-            layoutMode = layoutMode,
-            searchBar = searchBar,
-            captureActions = captureActions,
-            labels = labels,
-            actions = actions,
-            dialogs = dialogs,
-            inspection = inspection,
-            liveArea = liveArea,
-            context = context,
-            shouldShowViews = shouldShowViews,
-            resultsAvailable = searchState.resultsAvailable,
-            sharePreparing = shareOwner.state.value.status == ImageShareStatus.Preparing,
-            snackbarHostState = snackbarHostState,
-            transferState = transferState,
-            onCancelTransfer = transferOwner::cancel,
-            rootSizeState = rootSizeState,
-            viewport = viewport,
-            status = { status(null) },
-            manager = {
-                if (searchEditing.isOpen) {
-                    FinderSearchLists(
-                        lists = sessionState.persisted.lists,
-                        activeListId = sessionState.persisted.activeListId,
-                        editor = searchEditing.editor,
-                        canSave = sessionState.loaded && !sessionState.recoveryRequired,
-                        onNew = searchEditing::startNewList,
-                        onSelect = searchEditing::selectList,
-                        onEdit = searchEditing::editList,
-                        onDelete = searchEditing::requestDelete,
-                        onNameChange = searchEditing::updateDraftName,
-                        onTermsChange = searchEditing::updateDraftTerms,
-                        onSave = searchEditing::saveDraft,
-                        onCancel = searchEditing::cancelDraft,
-                    )
-                }
-            },
-        )
     }
     FinderDialogs(
+        appearance = appearance,
+        onAppearanceChange = onAppearanceChange,
         dialogs = dialogs,
         sessionState = sessionState,
         searchState = searchState,
         inspection = inspection,
         searchEditing = searchEditing,
+        transferOwner = transferOwner,
+        snackbarHostState = snackbarHostState,
         liveArea = liveArea,
-        transferState = transferState,
-        actions = actions,
-        liveAreaLabel = labels.liveArea,
-        showImport = importedState.phase.allowsLiveCamera,
         shouldShowViews = shouldShowViews,
-        onImportList = transferOwner::importList,
-        onExportList = transferOwner::exportSelectedList,
-        floatingLive = floatingLive,
-        recognitionDetailsAvailable = recognitionDetailsAvailable,
     )
 }

@@ -1014,3 +1014,197 @@ One clean run exported the 117 legacy PNGs and two measurement files, all byte-i
 to the pre-change exports. No Kotlin formatter is configured. The checks cover host
 rendering on the development host. Cross-host pixel stability and physical-device camera,
 OCR, and rendering behavior remain unverified.
+
+## Scanner redesign Phase 5 — 2026-11-14
+
+The clean starting checkout at `63b15d0` passed 484 Android host tests with 110 matching
+baselines and both platform compilation targets. After removing unreachable stacked scanner
+UI and updating Help, the clean uncached host suite passed 484 tests across 67 suites with
+zero failures, errors or skips. All 110 Roborazzi comparisons matched. Android debug Kotlin
+and iOS simulator Kotlin compilation succeeded, and the screenshot index was regenerated.
+
+Re-recorded all ten screen fixtures, all region fixtures in `RegionScreenshotTest`, and the
+standalone Help dialog. Only `screen/app__help-open__light.png` and
+`region/usage-help-dialog__open__light.png` changed, reflecting the updated matching,
+keyboard, zoom and inspection instructions. Both changes were visually reviewed. The
+fixtures are under `shared/src/androidHostTest/screenshots`.
+
+Legacy layout fixtures moved to Android host test sources to keep their assertions and
+reference images useful. The obsolete dock-chrome flag assertions were retired with those
+flags. The layout-mode test still verifies live viewport classification. Existing App
+coverage checks full-size preview and query focus through keyboard and compact-layout
+changes. The cleanup preserves the camera lease and fresh-frame gate, scan-area freshness
+checks, and retained copy/navigation guards. The retained occurrence route also clears
+focus, hides the keyboard and closes term results before opening occurrences.
+
+No Kotlin formatter is configured. Device rendering over real camera imagery, one-handed
+reach, physical pinch behavior and TalkBack remain unverified.
+
+## Floating control edge and removal of tests for retired layouts — 2026-11-14
+
+Floating scanner controls gained a 1dp light edge (`FinderCameraOverlay.controlOutline`) so
+they stay visible on a black backdrop; 47 baselines were re-recorded for that change and three
+of the screens were reviewed by eye.
+
+The redesign had moved the retired dock, top region, capture row and inspection controls into
+Android host test sources so their tests kept passing. Twenty-one tests whose only subject was
+one of those copies were removed, with their 33 baselines: twelve in `RegionScreenshotTest`,
+one in `ElementScreenshotTest`, two in `LiveTextFinderThemeTest`, four in
+`StillInspectionUiTest`, and both tests in `LiveCaptureControlRowTest`. The test-only copies
+`LiveCaptureControlRow` and `FinderTopRegion` were deleted. Lease behaviour that
+`LiveCaptureControlRowTest` exercised through the old row remains covered at the owner level
+by `LiveCaptureControlsTest` and `AndroidLiveCaptureControlsTest`.
+
+Still present as test-only copies: `FinderLiveDock`, `FinderLiveAppBar`,
+`StillInspectionControls` (with `StillMatchNavigationControls`) and `FinderContentAssembly`.
+Four tests drive live code through them: saved-search controller and term-results
+synchronisation, routing through `RetainedInspectionActionDispatcher`, and retained-image
+viewport and focus behaviour. They assert on production logic but reach it through UI the app
+no longer shows. The floating scanner controls have screenshot coverage only; no test yet
+checks their routing, semantics or touch targets.
+
+A clean uncached host run passed **463 tests in 66 suites with 0 failures** against 77
+baselines (51 element, 16 region, 10 screen). `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. Not run on a device.
+
+
+## Behavioural tests for the floating controls — 2026-11-14
+
+The four tests that reached live logic through test-only copies of the retired dock, app bar
+and inspection controls were replaced by tests of the controls the app now shows:
+
+- `RetainedInspectionActionDispatcherTest` (common, five tests) checks the call order of
+  `toggleLists`, `showTerms`, `showOccurrences` and `returnToSource` directly.
+- `StillInspectionUiTest` mounts `FloatingLiveScanner` in its retained mode and
+  `FloatingScannerActionBar(retainedActions(...))`. It checks that Lists, Copy, Share and Camera
+  route to their callbacks, that Share becomes Cancel share while an image is prepared, that
+  Copy is disabled without a selection, that the retained viewport keeps the same positive
+  bounds across light and dark themes, match count, share state and an active list, that zoom,
+  match and settings buttons are at least 48dp, and that stepping matches at font scale 1.5
+  changes neither the viewport size nor a 2× zoom.
+- `StatusFeedbackTest` wires `FloatingScannerSearchField` and `FloatingScannerStatusPill` to a
+  real `SearchSessionController`. It checks the Whole words toggle (state description, match
+  mode, search identity), the list chip's Use manual search button (48dp, invalidates before
+  the mutation, keeps the manual query), typing leaving list mode, and that the term results
+  dialog opened from the status pill hides counts when results are not current.
+
+The test-only copies `FinderLiveDock`, `FinderLiveAppBar` and `StillInspectionControls` were
+deleted.
+
+The last four copies (`FinderContentAssembly`, `LegacyFinderStatusRegion`,
+`LegacyFinderOptionsSheet`, `StatusDetailsDialog`) were then removed as well, so no retired
+composable remains in test sources:
+
+- Layout fixtures in `StatusFeedbackTest` and `LiveTextFinderThemeTest` call the production
+  `AppContentColumn` directly, and the status fixtures call the production
+  `FinderStatusRegion`.
+- The options sheet tests drive the production `FinderOptionsSheet`: its four rows (highlight
+  colour, appearance, reset view, help) meet 48dp, close the sheet before their callback, the
+  disabled highlight row ignores touch, Reset view is absent without a retained image, and
+  Back dismisses once. The fixture forces a 360dp window, in which the short sheet sits
+  partly below the window edge, so rows are checked against the sheet viewport only.
+- Status tests no longer open a recognition details dialog; they assert that the summary
+  follows the selected source, hides with the views, and never shows raw camera messages.
+- Removed because their subject is gone or covered elsewhere: the list-transfer rows in the
+  options sheet (`FinderSearchListsTest` covers them in the list manager), the recognition
+  details dialog test, and the `status-details-dialog` screenshot test with its three
+  baselines.
+
+Recognition details are no longer reachable in the app, so the leftover code was removed:
+`RecognitionDetails`, `recognitionDetails`, the `details` and `onDetails` parameters of
+`StatusSummary`, the `StatusPresentationTest` case for the computation, and thirteen string
+resources used only by the details dialog and its button.
+
+A clean uncached host run passed **468 tests in 67 suites with 0 failures** against 76
+baselines (51 element, 13 region, 12 screen); no baseline was re-recorded, including the two
+`status-summary` ones. `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
+device.
+
+## Shared sheet and dialog styling — 2026-11-16
+
+Sheets and dialogs were restyled from mockups the owner approved, through four shared pieces
+in `ui/`: `FinderActions.kt` (filled, outlined, text and dialog buttons as Material 40dp pills
+inside a 48dp touch target, with the Material leading-icon paddings), and
+`FinderSheetComponents.kt` (`FinderSheetTitle`, `FinderRowGroup`, `FinderSettingsRow` with its
+icon in a circular container, and the round `FinderColorSwatch`).
+
+- Highlight colour dialog: one radio column of five rows with round swatches, the explanation
+  shortened and moved below the list, and text buttons.
+- Settings sheet (was "Options"): one grouped container; each row shows an icon, a title and
+  the current value, and the highlight row ends with a swatch.
+- Search lists sheet: no "Close lists" action; "New list" (filled) and "Import" (outlined)
+  share one row; each list is a radio row with a three-dot menu holding Edit, Export and
+  Delete, where Delete uses the error colour and keeps its confirmation.
+- All alert dialogs use text buttons; the remaining square swatches became round.
+- Nine icons were added as vector drawables (`finder_*.xml`) from the Material Icons outlined
+  set, and 34 string resources without a caller were removed.
+
+Tests were updated to the new contract (visual button height 40dp, touch target 48dp) and to
+the menu. `DropdownMenu` popups do not settle in the Robolectric fixture (the looper never
+idles once one is open), so `FinderSearchListsTest` mounts `SearchListMenuItems` directly:
+routing, the disabled Export item and the missing Export item are covered, and the three-dot
+button's label and touch target are covered, but that tapping it opens the menu is **not**
+covered by any host test and no baseline shows the open menu.
+
+A clean uncached host run passed **473 tests in 67 suites with 0 failures** against 79
+baselines (51 element, 11 region, 17 screen). Twenty-seven baselines were re-recorded; the
+lists sheet, lists sheet with editor, settings sheet, highlight dialog, matches dialog and
+scan-area edit bar were reviewed by eye. `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
+device.
+
+## First-run intro and one-time hints — 2026-11-17
+
+The owner approved onboarding as a camera-permission intro plus one-time hints, including a
+small on-device store for the hints' seen flags.
+
+- `onboarding/CameraPermissionIntro.kt` (shared UI) replaces the single line of hardcoded text
+  on the Android permission screen: the Spotword mark, a title, what the app does, why it
+  needs the camera, and "Allow camera" (or "Open app settings" with a shorter explanation once
+  the system stops showing the request). It needs no storage; it shows while access is
+  missing.
+- `onboarding/OnboardingHints.kt` picks at most one hint, only while the live camera is
+  delivering frames and the lists sheet is closed: Search (until a query exists), Results (on
+  the first match) and Lists (after Results). Each shows once, as a floating
+  `ContextMessage` with "Got it", announced politely. Typing a query, tapping the status pill
+  or opening Lists also marks the matching hint seen.
+- Seen flags are one boolean per hint in the `onboarding` SharedPreferences file on Android
+  (`NSUserDefaults` on iOS, which has no live camera, so hints never show there).
+
+New tests: `OnboardingHintsTest` (common: ordering, gating and write-once), and
+`SharedPreferencesHintStoreTest` (flags survive a new store instance). New baselines: four of
+the intro (request in light, dark and 130 % font; settings in light) and three hints. Eight
+`app__*` screen baselines were re-recorded because the permission screen behind them changed;
+the permission screen was reviewed by eye. The hints are **not** covered inside the assembled
+screen, because the host fixture has no running camera.
+
+A clean uncached host run passed **485 tests in 70 suites with 0 failures** against 90
+baselines (58 element, 15 region, 17 screen). `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
+device.
+
+## Release build with R8
+
+`androidApp` release builds now use R8 shrinking, obfuscation and resource shrinking, and sign
+with an upload key read from an untracked `keystore.properties` (see `docs/release.md`).
+`:androidApp:assembleRelease` and `:androidApp:bundleRelease` succeeded without a key
+(unsigned): the bundle is 24.5 MB and the universal APK 45 MB, against 60 MB for the debug APK.
+
+The first shrunk build was installed on the `Pixel_9a` emulator (API 36 image), signed locally
+with the debug key for the check only. It launched and showed the camera intro, but live
+recognition failed on the first frame: logcat showed `ComponentDiscovery` unable to
+instantiate ML Kit's `CommonComponentRegistrar`, `TextRegistrar` and `VisionCommonRegistrar`
+(`NoSuchMethodException <init>`). A keep rule for the no-argument constructors of
+`ComponentRegistrar` implementations fixed it. With the rule:
+
+- camera permission request from the intro, then the live camera scanning the emulator's
+  virtual scene, with the Search hint shown;
+- import through the system photo picker of a screenshot containing text: "camera" found
+  4 matches, all highlighted, with match stepping available;
+- Share opened the system share sheet (FileProvider);
+- no `ClassNotFound`, `NoSuchMethod`, `NoClassDefFound` or fatal entries in logcat.
+
+Not checked in the release build: live recognition of real printed text (the virtual scene has
+none), Copy, search lists import/export, scan area, freeze, and the Pixel 10. A build signed
+with the real upload key has not been made.
