@@ -86,7 +86,7 @@ internal fun FinderSettingsRow(
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(22.dp),
                 tint = titleColor,
             )
         }

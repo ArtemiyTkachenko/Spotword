@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -121,32 +120,35 @@ private fun ActiveListChip(
     modifier: Modifier = Modifier,
 ) {
     val label = stringResource(Res.string.search_context_use_manual)
-    Row(
-        modifier = modifier.clip(CircleShape)
-            .background(FinderCameraOverlay.selectedControlContainer),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = name,
-            color = FinderCameraOverlay.onSelectedControl,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 100.dp).padding(start = 12.dp),
+    Box(modifier = modifier) {
+        Box(
+            Modifier.matchParentSize()
+                .padding(vertical = 2.dp)
+                .background(FinderCameraOverlay.selectedControlContainer, CircleShape),
         )
-        ScannerControlTooltip(label) {
-            IconButton(
-                onClick = onRemove,
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = FinderCameraOverlay.onSelectedControl,
-                ),
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.scanner_close),
-                    contentDescription = label,
-                    modifier = Modifier.size(24.dp),
-                )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = name,
+                color = FinderCameraOverlay.onSelectedControl,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 100.dp).padding(start = 12.dp),
+            )
+            ScannerControlTooltip(label) {
+                IconButton(
+                    onClick = onRemove,
+                    modifier = Modifier.size(48.dp),
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = FinderCameraOverlay.onSelectedControl,
+                    ),
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.scanner_close),
+                        contentDescription = label,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }
