@@ -1,0 +1,35 @@
+<!-- Spotword mark for in-app use: the launcher icon's lens and highlighted word,
+     cropped to the mark without the adaptive-icon padding. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <group
+        android:translateX="-30"
+        android:translateY="-30">
+        <path
+            android:fillColor="#232B36"
+            android:pathData="M33.76,50.48a16.72,16.72 0,1 0,33.44,0a16.72,16.72 0,1 0,-33.44,0z" />
+        <path
+            android:fillColor="#8797A8"
+            android:pathData="M41.68,39.92h17.6a2.64,2.64 0,0 1,2.64,2.64v0.0a2.64,2.64 0,0 1,-2.64,2.64h-17.6a2.64,2.64 0,0 1,-2.64,-2.64v-0.0a2.64,2.64 0,0 1,2.64,-2.64z" />
+        <path
+            android:fillColor="#8797A8"
+            android:pathData="M41.68,58.4h10.56a2.64,2.64 0,0 1,2.64,2.64v0.0a2.64,2.64 0,0 1,-2.64,2.64h-10.56a2.64,2.64 0,0 1,-2.64,-2.64v-0.0a2.64,2.64 0,0 1,2.64,-2.64z" />
+        <path
+            android:fillColor="#FFEE00"
+            android:pathData="M42.56,47.4h15.84a4.4,4.4 0,0 1,4.4,4.4v0.0a4.4,4.4 0,0 1,-4.4,4.4h-15.84a4.4,4.4 0,0 1,-4.4,-4.4v-0.0a4.4,4.4 0,0 1,4.4,-4.4z" />
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#5FDDBF"
+            android:strokeWidth="4.4"
+            android:pathData="M33.76,50.48a16.72,16.72 0,1 0,33.44,0a16.72,16.72 0,1 0,-33.44,0z" />
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#5FDDBF"
+            android:strokeWidth="6.16"
+            android:strokeLineCap="round"
+            android:pathData="M62.8,62.8L74.24,74.24" />
+    </group>
+</vector>

@@ -251,4 +251,14 @@
     <string name="appearance_system">System</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
+    <string name="camera_intro_title">Find words on any page</string>
+    <string name="camera_intro_body">Type what you’re looking for and point your camera at printed text. Every match is highlighted as you scan.</string>
+    <string name="camera_intro_permission">Spotword uses the camera only to read text, and the text is read on your device.</string>
+    <string name="camera_intro_settings">Camera access is turned off. Turn it on in app settings to start scanning.</string>
+    <string name="camera_allow">Allow camera</string>
+    <string name="camera_open_settings">Open app settings</string>
+    <string name="onboarding_hint_search">Type a word below, then point your camera at printed text.</string>
+    <string name="onboarding_hint_results">Matches are highlighted. Tap the match count at the top to see them listed.</string>
+    <string name="onboarding_hint_lists">Looking for several words at once? Save them as a list in Lists.</string>
+    <string name="onboarding_hint_dismiss">Got it</string>
 </resources>

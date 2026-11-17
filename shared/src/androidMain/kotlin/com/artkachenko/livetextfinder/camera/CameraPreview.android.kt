@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,7 +33,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -47,6 +44,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.artkachenko.livetextfinder.ocr.OcrStatus
 import com.artkachenko.livetextfinder.ocr.OcrUiState
+import com.artkachenko.livetextfinder.onboarding.CameraPermissionIntro
 import com.artkachenko.livetextfinder.ui.FinderPrimaryAction
 import livetextfinder.shared.generated.resources.Res
 import livetextfinder.shared.generated.resources.camera_preview_paused
@@ -133,31 +131,22 @@ internal actual fun CameraPreview(
             FrozenBitmapPreview(owner, modifier, isContentVisible)
         }
 
-        !granted -> Box(modifier, contentAlignment = Alignment.Center) {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text("Camera access is needed for live text recognition.", color = Color.White)
-                FinderPrimaryAction(
-                    label = if (settingsRequired) "Open app settings" else "Allow camera",
-                    enabled = true,
-                    onClick = {
-                        if (settingsRequired) {
-                            context.startActivity(
-                                Intent(
-                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                    Uri.fromParts("package", context.packageName, null),
-                                ),
-                            )
-                        } else {
-                            launcher.launch(Manifest.permission.CAMERA)
-                        }
-                    },
-                )
-            }
-        }
+        !granted -> CameraPermissionIntro(
+            settingsRequired = settingsRequired,
+            onAction = {
+                if (settingsRequired) {
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null),
+                        ),
+                    )
+                } else {
+                    launcher.launch(Manifest.permission.CAMERA)
+                }
+            },
+            modifier = modifier,
+        )
 
         foreground -> key(restartEpoch) {
             AndroidCameraFeed(

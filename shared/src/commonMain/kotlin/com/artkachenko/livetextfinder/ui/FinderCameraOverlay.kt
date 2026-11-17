@@ -22,6 +22,10 @@ internal object FinderCameraOverlay {
     /** Fills the viewport behind a letterboxed preview or retained image. */
     val viewportBackground: Color = Color.Black
 
+    /** Text drawn directly on [viewportBackground], such as the camera permission intro. */
+    val onViewport: Color = Color.White
+    val onViewportVariant: Color = Color.White.copy(alpha = 0.78f)
+
     /** Scan-area border and handle foreground. */
     val guide: Color = Color.White
 

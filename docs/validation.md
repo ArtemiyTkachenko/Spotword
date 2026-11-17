@@ -1153,3 +1153,33 @@ lists sheet, lists sheet with editor, settings sheet, highlight dialog, matches 
 scan-area edit bar were reviewed by eye. `:shared:compileKotlinIosSimulatorArm64` and
 `:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
 device.
+
+## First-run intro and one-time hints — 2026-11-17
+
+The owner approved onboarding as a camera-permission intro plus one-time hints, including a
+small on-device store for the hints' seen flags.
+
+- `onboarding/CameraPermissionIntro.kt` (shared UI) replaces the single line of hardcoded text
+  on the Android permission screen: the Spotword mark, a title, what the app does, why it
+  needs the camera, and "Allow camera" (or "Open app settings" with a shorter explanation once
+  the system stops showing the request). It needs no storage; it shows while access is
+  missing.
+- `onboarding/OnboardingHints.kt` picks at most one hint, only while the live camera is
+  delivering frames and the lists sheet is closed: Search (until a query exists), Results (on
+  the first match) and Lists (after Results). Each shows once, as a floating
+  `ContextMessage` with "Got it", announced politely. Typing a query, tapping the status pill
+  or opening Lists also marks the matching hint seen.
+- Seen flags are one boolean per hint in the `onboarding` SharedPreferences file on Android
+  (`NSUserDefaults` on iOS, which has no live camera, so hints never show there).
+
+New tests: `OnboardingHintsTest` (common: ordering, gating and write-once), and
+`SharedPreferencesHintStoreTest` (flags survive a new store instance). New baselines: four of
+the intro (request in light, dark and 130 % font; settings in light) and three hints. Eight
+`app__*` screen baselines were re-recorded because the permission screen behind them changed;
+the permission screen was reviewed by eye. The hints are **not** covered inside the assembled
+screen, because the host fixture has no running camera.
+
+A clean uncached host run passed **485 tests in 70 suites with 0 failures** against 90
+baselines (58 element, 15 region, 17 screen). `:shared:compileKotlinIosSimulatorArm64` and
+`:androidApp:compileDebugKotlin` succeeded. No Kotlin formatter is configured. Not run on a
+device.

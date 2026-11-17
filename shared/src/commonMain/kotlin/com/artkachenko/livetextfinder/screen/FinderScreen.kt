@@ -31,6 +31,9 @@ import com.artkachenko.livetextfinder.lists.SavedSearchEditingState
 import com.artkachenko.livetextfinder.lists.SearchListTransferContextEffect
 import com.artkachenko.livetextfinder.ocr.OcrUiState
 import com.artkachenko.livetextfinder.ocr.isCameraRunning
+import com.artkachenko.livetextfinder.onboarding.OnboardingHint
+import com.artkachenko.livetextfinder.onboarding.OnboardingHintMessage
+import com.artkachenko.livetextfinder.onboarding.rememberOnboardingHints
 import com.artkachenko.livetextfinder.scanarea.LiveAreaBackHandler
 import com.artkachenko.livetextfinder.scanarea.LiveSearchAreaState
 import com.artkachenko.livetextfinder.scanarea.ScanAreaEditBar
@@ -161,6 +164,24 @@ internal fun FinderScreen(
         onResults = { dialogs.termResultsOpen = true },
     )
     val layoutMode = finderLayoutMode(stillSource != null, areaEditing)
+    val hints = rememberOnboardingHints()
+    val hasQuery = activeSearch.terms.any { term -> term.text.isNotBlank() }
+    LaunchedEffect(hasQuery) {
+        if (hasQuery) {
+            hints.markSeen(OnboardingHint.Search)
+        }
+    }
+    LaunchedEffect(searchEditing.isOpen) {
+        if (searchEditing.isOpen) {
+            hints.markSeen(OnboardingHint.Lists)
+        }
+    }
+    val onboardingHint = hints.next(
+        cameraRunning = layoutMode == FinderLayoutMode.Live && !searchEditing.isOpen &&
+            ocrState.status.isCameraRunning,
+        hasQuery = hasQuery,
+        hasMatches = search.occurrences.isNotEmpty(),
+    )
 
     val snackbarHostState = remember { SnackbarHostState() }
     FinderFeedbackEffects(
@@ -224,7 +245,10 @@ internal fun FinderScreen(
                     onMatchMode = searchEditing::setMatchMode,
                     onOptions = { dialogs.optionsOpen = true },
                     statusLabel = label,
-                    onStatus = searchBar.onTerms,
+                    onStatus = {
+                        hints.markSeen(OnboardingHint.Results)
+                        searchBar.onTerms()
+                    },
                     snackbarHostState = snackbarHostState.takeUnless { searchEditing.isOpen },
                     listsOpen = searchEditing.isOpen,
                     matchModeEnabled = sessionState.loaded && !sessionState.recoveryRequired,
@@ -247,6 +271,12 @@ internal fun FinderScreen(
                                 actionLabel = stringResource(Res.string.capture_cancel_import),
                                 onAction = actions::leaveOrCancelImport,
                                 floating = true,
+                            )
+                        }
+                        if (onboardingHint != null) {
+                            OnboardingHintMessage(
+                                hint = onboardingHint,
+                                onDismiss = { hints.markSeen(onboardingHint) },
                             )
                         }
                     },
